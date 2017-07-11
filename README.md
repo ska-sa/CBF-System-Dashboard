@@ -14,8 +14,7 @@ Build the docker image with the following command, which will also install all d
 
         $ docker build -t cbf-dashboard:cbf-system-dashboard .
 
-![CBF Dashboard](https://raw.githubusercontent.com/ska-sa/CBF-System-Dashboard/master/images/build_log.png)
-
+![CBF Dashboard](https://raw.githubusercontent.com/ska-sa/CBF-System-Dashboard/master/images/build.png)
 ## Startup container
 To run the newly build docker container, execute the following command...
 
