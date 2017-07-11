@@ -1,0 +1,7 @@
+apt-utils
+lm-sensors
+mosquitto
+mosquitto-clients
+openssh-client
+openssh-server
+vim
