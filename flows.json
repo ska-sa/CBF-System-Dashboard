@@ -2273,10 +2273,10 @@
         "type": "mqtt in",
         "z": "16ef74d2.7e23eb",
         "name": "",
-        "topic": "katcp_ip",
+        "topic": "instrument/katcp_ip",
         "qos": "0",
         "broker": "3fb915a5.7ae9ba",
-        "x": 80,
+        "x": 110,
         "y": 880,
         "wires": [
             [
@@ -2305,10 +2305,10 @@
         "type": "mqtt in",
         "z": "16ef74d2.7e23eb",
         "name": "",
-        "topic": "array_port",
+        "topic": "instrument/array_port",
         "qos": "0",
         "broker": "3fb915a5.7ae9ba",
-        "x": 80,
+        "x": 120,
         "y": 760,
         "wires": [
             [
@@ -2337,10 +2337,10 @@
         "type": "mqtt in",
         "z": "16ef74d2.7e23eb",
         "name": "",
-        "topic": "array_name",
+        "topic": "instrument/array_name",
         "qos": "0",
         "broker": "3fb915a5.7ae9ba",
-        "x": 90,
+        "x": 120,
         "y": 820,
         "wires": [
             [
