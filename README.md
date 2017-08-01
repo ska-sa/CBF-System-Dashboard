@@ -12,7 +12,7 @@ container on [DockerHub](https://hub.docker.com/r/nodered/node-red-docker/).
 
 Build the docker image with the following command, which will also install all dependencies...
 
-        $ docker build -t cbf-dashboard:cbf-system-dashboard .
+        $ docker build -t cbf-dashboard/cbf-system-dashboard .
 
 ![CBF Dashboard](https://raw.githubusercontent.com/ska-sa/CBF-System-Dashboard/master/images/build.png)
 ## Startup container
