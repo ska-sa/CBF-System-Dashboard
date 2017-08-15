@@ -6,6 +6,7 @@ import paho.mqtt.publish as publish
 import re
 import time
 from jenkinsapi.jenkins import Jenkins
+from concurrent.futures import ThreadPoolExecutor
 
 # Katcp Sensors in question.
 sensors_required = [
@@ -251,7 +252,8 @@ class NoderedFeeds(object):
                 time.sleep(_delay_poll)
                 logging.info('Sleeping for %s to ease up the cpu'%_delay_poll)
 
-        sensor_polling(self)
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            sensor_polling(self)
 
 
 
