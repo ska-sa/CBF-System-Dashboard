@@ -1,6 +1,7 @@
 #!/bin/bash
 # Mpho Mphego <mmphego@ska.ac.za>
 
+set -x
 if [ "$EUID" -ne 0 ]
   then echo "Please run as root"
   exit
