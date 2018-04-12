@@ -1,0 +1,25 @@
+.btn-xl {
+  width: 100px;
+  height: 20px;
+  line-height: 1.5;
+  /*padding: 10px 100px;
+  border-width: 2px;
+  border-color: #00ABE2;
+  border-radius: 50%;*/
+  background-color: #ffffff;
+  text-align: center;
+  font-size: 14px;
+  display: inline-block;
+}
+/*
+.btn-vert {
+  width: 20px;
+  height: 500px;
+  background-color: #ffffff;
+  display: inline-block;
+}*/
+.horizontal{
+    display: inline-block;
+    width: 10px;
+    /*text-align: center;*/
+}
