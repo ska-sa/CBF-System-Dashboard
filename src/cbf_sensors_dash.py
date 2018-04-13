@@ -19,6 +19,7 @@ import os
 import socket
 import struct
 import sys
+import time
 import types
 import urllib2
 
@@ -45,72 +46,72 @@ def get_sensors(json_file):
         return data
 
 # Sensors should be formatted like this
-sensor_format = {
-                    'fhost00': [    # sensor, status
-                                    ['SKA-020709','host'],
-                                    ['fhost00', 'skarab020709-01'],
-                                    ['ant0_x', 'inputlabel'],
-                                    ['network', 'nominal'],
-                                    ['spead-rx', 'nominal'],
-                                    # ['network-reorder', 'nominal'],
-                                    ['network-Re', 'nominal'],
-                                    ['cd', 'warn'],
-                                    ['pfb', 'nominal'],
-                                    ['requant', 'warn'],
-                                    ['ct', 'nominal'],
-                                    ['spead-tx','nominal'],
-                                    ['network', 'error'],
-                                    ['->XEngine', 'xhost']
-                             ],
-                    'fhost01': [    # sensor, status
-                                    ['SKA-020710','host'],
-                                    ['fhost01', 'skarab020710-01'],
-                                    ['ant1_x', 'inputlabel'],
-                                    ['network', 'nominal'],
-                                    ['spead-rx', 'nominal'],
-                                    # ['network-reorder', 'nominal'],
-                                    ['network-Re', 'warn'],
-                                    ['cd', 'nominal'],
-                                    ['pfb', 'nominal'],
-                                    ['requant', 'nominal'],
-                                    ['ct', 'nominal'],
-                                    ['spead-tx','nominal'],
-                                    ['network', 'nominal'],
-                                    ['->XEngine', 'xhost']
-                             ],
-                    'fhost02': [    # sensor, status
-                                    ['SKA-020711','host'],
-                                    ['fhost02', 'skarab020711-01'],
-                                    ['ant1_x', 'inputlabel'],
-                                    ['network', 'nominal'],
-                                    ['spead-rx', 'nominal'],
-                                    # ['network-reorder', 'nominal'],
-                                    ['network-Re', 'nominal'],
-                                    ['cd', 'warn'],
-                                    ['pfb', 'nominal'],
-                                    ['requant', 'error'],
-                                    ['ct', 'nominal'],
-                                    ['spead-tx','warn'],
-                                    ['network', 'nominal'],
-                                    ['->XEngine', 'xhost']
-                             ],
-                    'fhost03': [    # sensor, status
-                                    ['SKA-020711','host'],
-                                    ['fhost03', 'skarab020711-01'],
-                                    ['ant2_x', 'inputlabel'],
-                                    ['network', 'warn'],
-                                    ['spead-rx', 'nominal'],
-                                    # ['network-reorder', 'nominal'],
-                                    ['network-Re', 'error'],
-                                    ['cd', 'nominal'],
-                                    ['pfb', 'nominal'],
-                                    ['requant', 'nominal'],
-                                    ['ct', 'nominal'],
-                                    ['spead-tx','nominal'],
-                                    ['network', 'nominal'],
-                                    ['->XEngine', 'xhost']
-                             ],
-                    }
+# sensor_format = {
+#                     'fhost00': [    # sensor, status
+#                                     ['SKA-020709','host'],
+#                                     ['fhost00', 'skarab020709-01'],
+#                                     ['ant0_x', 'inputlabel'],
+#                                     ['network', 'nominal'],
+#                                     ['spead-rx', 'nominal'],
+#                                     # ['network-reorder', 'nominal'],
+#                                     ['network-Re', 'nominal'],
+#                                     ['cd', 'warn'],
+#                                     ['pfb', 'nominal'],
+#                                     ['requant', 'warn'],
+#                                     ['ct', 'nominal'],
+#                                     ['spead-tx','nominal'],
+#                                     ['network', 'error'],
+#                                     ['->XEngine', 'xhost']
+#                              ],
+#                     'fhost01': [    # sensor, status
+#                                     ['SKA-020710','host'],
+#                                     ['fhost01', 'skarab020710-01'],
+#                                     ['ant1_x', 'inputlabel'],
+#                                     ['network', 'nominal'],
+#                                     ['spead-rx', 'nominal'],
+#                                     # ['network-reorder', 'nominal'],
+#                                     ['network-Re', 'warn'],
+#                                     ['cd', 'nominal'],
+#                                     ['pfb', 'nominal'],
+#                                     ['requant', 'nominal'],
+#                                     ['ct', 'nominal'],
+#                                     ['spead-tx','nominal'],
+#                                     ['network', 'nominal'],
+#                                     ['->XEngine', 'xhost']
+#                              ],
+#                     'fhost02': [    # sensor, status
+#                                     ['SKA-020711','host'],
+#                                     ['fhost02', 'skarab020711-01'],
+#                                     ['ant1_x', 'inputlabel'],
+#                                     ['network', 'nominal'],
+#                                     ['spead-rx', 'nominal'],
+#                                     # ['network-reorder', 'nominal'],
+#                                     ['network-Re', 'nominal'],
+#                                     ['cd', 'warn'],
+#                                     ['pfb', 'nominal'],
+#                                     ['requant', 'error'],
+#                                     ['ct', 'nominal'],
+#                                     ['spead-tx','warn'],
+#                                     ['network', 'nominal'],
+#                                     ['->XEngine', 'xhost']
+#                              ],
+#                     'fhost03': [    # sensor, status
+#                                     ['SKA-020711','host'],
+#                                     ['fhost03', 'skarab020711-01'],
+#                                     ['ant2_x', 'inputlabel'],
+#                                     ['network', 'warn'],
+#                                     ['spead-rx', 'nominal'],
+#                                     # ['network-reorder', 'nominal'],
+#                                     ['network-Re', 'error'],
+#                                     ['cd', 'nominal'],
+#                                     ['pfb', 'nominal'],
+#                                     ['requant', 'nominal'],
+#                                     ['ct', 'nominal'],
+#                                     ['spead-tx','nominal'],
+#                                     ['network', 'nominal'],
+#                                     ['->XEngine', 'xhost']
+#                              ],
+#                     }
 
 # def format_sensors(sensor_data):
 #     fhosts = []
@@ -140,6 +141,11 @@ COLORS = [
                 # ERROR
                 'background': 'red',
                 'color': 'white',
+            },
+            {
+                # FAILURE
+                'background': 'white',
+                'color': 'red',
             },
             {
                 # Other
@@ -183,10 +189,18 @@ def set_style(state):
                 'color': COLORS[2]['color'],
                 'display': 'inline-block'
                 }
-        else:
+        elif state == 'failure':
             style = {
                 'backgroundColor': COLORS[3]['background'],
                 'color': COLORS[3]['color'],
+                'font-weight': 'bold',
+                'font-style': 'italic',
+                'display': 'inline-block',
+                }
+        else:
+            style = {
+                'backgroundColor': COLORS[4]['background'],
+                'color': COLORS[4]['color'],
                 'display': 'inline-block'
                 }
     return style
@@ -201,13 +215,14 @@ def add_buttons(child, _id, _status):
     ======
 
     """
-    return [
-        # Button click redirection -- https://github.com/plotly/dash-html-components/issues/16
-        html.A(
-            html.Button(children=child, id=_id, style=set_style(_status),
-                type='button', className="btn-xl"),
-            href='http://www.dontclick.it/'),
-        html.Hr(className='horizontal')]
+    # Button click redirection -- https://github.com/plotly/dash-html-components/issues/16
+    _button = [html.Button(children=child, id=_id, style=set_style(_status), type='button',
+                            className="btn-xl")]
+    if '->XEngine' in child:
+        return html.A(_button)
+    else:
+        _button.append(html.Hr(className='horizontal'))
+        return html.A(_button)
 
 
 def generate_line(host):
@@ -285,8 +300,8 @@ if __name__ == '__main__':
                         help='network interface [Default: eth0]')
     parser.add_argument('-p', '--port', dest='port', action='store_true', default=8888,
                         help='flask port [Default: 8888]')
-    parser.add_argument('--debug', dest='debug', action='store_false', default=True,
-                        help='flask with debug [Default: False]')
+    parser.add_argument('--nodebug', dest='debug', action='store_false', default=True,
+                        help='flask with no debug [Default: False]')
     parser.add_argument('--path', dest='sensor_path', action='store', default=None,
                         help='path to where the sensor data .json file is!')
     parser.add_argument('--loglevel', dest='log_level', action='store', default='INFO',
@@ -327,12 +342,13 @@ if __name__ == '__main__':
     else:
         sensor_values_json = args.get('sensor_path')
 
-    sensor_data = get_sensors(sensor_values_json)
+    sensor_format = get_sensors(sensor_values_json)
     host = get_ip_address(args.get('interface'))
 
     # Should I really argparse this???
     title = 'CBF Sensors Dashboard'
-    metadata = 'charset=\"UTF-8\" http-equiv=\"refresh\" content=\"60\"'
+    metadata = 'charset=\"UTF-8\" http-equiv=\"refresh\" content=\"5\"'
+    js_link = 'https://codepen.io/mmphego/pen/KoJoZq.js'
     try:
         css_link = "https://raw.githubusercontent.com/ska-sa/CBF-System-Dashboard/master/src/css/KoJoZq.css"
         assert file_exists(css_link)
@@ -343,8 +359,13 @@ if __name__ == '__main__':
     # Monkey patching
     app.title = types.StringType(title)
     app.meta = types.StringType(metadata)
-    app.layout = html.Div(generate_table())
+    app.layout = html.Div([
+        html.H3('%s' % time.ctime(), style={"margin":0}), html.Div(generate_table())
+        ])
+
+    app.scripts.append_script({"external_url": js_link})
     app.css.append_css({"external_url": css_link})
+    # import IPython; globals().update(locals()); IPython.embed(header='Python Debugger')
     app.run_server(host=host, port=args.get('port'), debug=args.get('debug'),
         extra_files=[sensor_values_json])
 
