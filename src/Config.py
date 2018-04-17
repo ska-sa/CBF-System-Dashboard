@@ -7,3 +7,31 @@ js_link = {
             }
 # CSS links
 css_link = 'https://codepen.io/mmphego/pen/KoJoZq.css'
+
+# Style colors
+COLORS = [
+            {   # NOMINAL
+                'background': 'green',
+                'color': 'white',
+            },
+            {
+                # WARN
+                'background': 'orange',
+                'color': 'white',
+            },
+            {
+                # ERROR
+                'background': 'red',
+                'color': 'white',
+            },
+            {
+                # FAILURE
+                'background': 'white',
+                'color': 'red',
+            },
+            {
+                # Other
+                'background': 'white',
+                'color': 'black',
+            },
+        ]

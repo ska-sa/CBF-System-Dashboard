@@ -13,6 +13,7 @@ import random
 import sys
 import time
 import traceback
+import threading
 
 # from addict import Dict
 from collections import OrderedDict
@@ -384,13 +385,16 @@ class SensorPoll(LoggingClass):
         return merged_sensors
 
 
-    @property
+    # @property
     def create_dumps_dir(self):
         """
         Create json dumps directory
         """
         # Conflicted: To store in /tmp or not to store in , that is the question
-        _dir, _name = os.path.split(os.path.dirname(os.path.realpath(__file__)))
+        try:
+            _dir, _name = os.path.split(os.path.dirname(os.path.realpath(__file__)))
+        except Exception:
+            _dir, _name = os.path.split(os.path.dirname(os.path.realpath(__name__)))
         path = _dir + '/json_dumps'
         if not os.path.exists(path):
             self.logger.info('Created %s for storing json dumps.'% path)
@@ -398,15 +402,18 @@ class SensorPoll(LoggingClass):
 
     def write_sorted_sensors_to_file(self,):
         sensors = self.merged_sensors_dict(self.map_fhost_sensors, self.map_xhost_sensor)
-        self.create_dumps_dir
+        self.create_dumps_dir()
         if args.get('sensor_json', False):
-            cur_path = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
+            try:
+                cur_path = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
+            except Exception:
+                cur_path = os.path.split(os.path.dirname(os.path.abspath(__name__)))[0]
             _filename = '%s/json_dumps/sensor_values.json' % cur_path
             self.logger.info('Updating sensors file: %s' % _filename)
             with open(_filename, 'w') as outfile:
                 json.dump(sensors, outfile, indent=4, sort_keys=True)
             self.logger.info('Done updating sensors file!!!')
-        return sensors
+        # return sensors
 
 
 if __name__ == '__main__':
@@ -447,10 +454,10 @@ if __name__ == '__main__':
         poll_time = args.get('poll')
         main_logger.logger.info('Begin sensor polling every %s seconds!!!' % poll_time)
         while True:
-            sensor_values = sensor_poll.write_sorted_sensors_to_file()
-            time.sleep(poll_time)
+            sensor_poll.write_sorted_sensors_to_file()
             main_logger.logger.debug('Updating sensor on dashboard!!!')
             main_logger.logger.info('---------------------RELOADING SENSORS---------------------')
+            time.sleep(poll_time)
     except Exception as e:
         main_logger.logger.exception(e.message)
         sys.exit(1)
