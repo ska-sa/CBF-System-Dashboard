@@ -40,35 +40,39 @@ class SensorPoll(LoggingClass):
         """
         self.katcp_ip = katcp_ip
         self.katcp_port = katcp_port
-        # self._started = False
-        atexit.register(self.cleanup)
         try:
-            reply, informs = self.katcp_request()
+            self._started = False
+            self.primary_client = self.katcp_request(which_port=self.katcp_port)
+            atexit.register(self.cleanup, self.primary_client)
+            assert isinstance(self.primary_client, katcp.client.BlockingClient)
+            reply, informs = self.sensor_request(self.primary_client)
             assert reply.reply_ok()
             katcp_array_list = informs[0].arguments
+            assert isinstance(katcp_array_list, list)
+            self.katcp_array_port, self.katcp_sensor_port = [int(i) for i in katcp_array_list[1].split(',')]
+            assert isinstance(self.katcp_array_port, int)
+            assert isinstance(self.katcp_sensor_port, int)
         except IndexError:
-            self.logger.error('There is no running array on %s:%s!!!!' % (self.katcp_ip,
-                self.katcp_port))
+            self.logger.error('No running array on %s:%s!!!!' % (self.katcp_ip, self.katcp_port))
             sys.exit(1)
         except Exception as e:
             self.logger.exception(e.message)
             sys.exit(1)
         else:
-            self.katcp_array_name = katcp_array_list[0]
-            self.katcp_array_port, self.katcp_sensor_port = katcp_array_list[1].split(',')
-            self.logger.info("Katcp connection established: IP %s, Array Port: %s, Sensor Port %s" %
-                        (self.katcp_ip, self.katcp_array_port, self.katcp_sensor_port))
-            self.input_mapping, self.hostname_mapping = self.do_mapping()
+            if self._started:
+                self._started = False
+                self.sec_client = self.katcp_request(which_port=self.katcp_array_port)
+                atexit.register(self.cleanup, self.sec_client)
 
-    def cleanup(self):
-        if self._started:
-            self.logger.debug('Some Cleaning Up!!!')
-            self.client.stop()
-            time.sleep(0.1)
-            if self.client.is_connected():
-                self.logger.error('Did not clean up client properly')
-            self.client = None
-            gc.collect
+            if self._started:
+                self._started = False
+                self.sec_sensors_katcp_con = self.katcp_request(which_port=self.katcp_sensor_port)
+                atexit.register(self.cleanup, self.sec_sensors_katcp_con)
+
+            self.logger.info("Katcp connection established: IP %s, Primary Port: %s, Array Port: %s,"
+                             " Sensor Port: %s" % (self.katcp_ip, self.katcp_port,
+                                self.katcp_array_port, self.katcp_sensor_port))
+            self.input_mapping, self.hostname_mapping = self.do_mapping()
 
     def katcp_request(self, which_port, katcprequest='array-list', katcprequestArg=None, timeout=10):
         """
@@ -90,42 +94,75 @@ class SensorPoll(LoggingClass):
         reply, informs : tuple
             katcp request messages
         """
-        self._started = False
+        # self._started = False
         if not self._started:
             self._started = True
-            self.logger.info('Connecting to running sensors servlet and getting sensors')
-            self.client = katcp.BlockingClient(self.katcp_ip, which_port, timeout=timeout)
-            self.client.setDaemon(True)
-            self.client.start()
+            self.logger.info('Establishing katcp connection on %s:%s' % (self.katcp_ip, which_port))
+            client = katcp.BlockingClient(self.katcp_ip, which_port)
+            client.setDaemon(True)
+            client.start()
             time.sleep(.1)
-        is_connected = self.client.wait_running(timeout)
-        if not is_connected:
-            self.client.stop()
-            self.logger.error('Could not connect to katcp, timed out.')
-            return
+            try:
+                is_connected = client.wait_running(timeout)
+                assert is_connected
+                self.logger.info('Katcp client connected to %s:%s\n' % (self.katcp_ip, which_port))
+                return client
+            except Exception:
+                client.stop()
+                self.logger.error('Could not connect to katcp, timed out.')
+
+    def sensor_request(self, client, katcprequest='array-list', katcprequestArg=None, timeout=10):
+        """
+        Katcp requests
+
+        Parameters
+        =========
+        client: katcp.client.BlockingClient
+            katcp running client
+        katcprequest: str
+            Katcp requests messages [Defaults: 'array-list']
+        katcprequestArg: str
+            katcp requests messages arguments eg. array-list array0 [Defaults: None]
+        timeout: int
+            katcp timeout [Defaults :10]
+
+        Return
+        ======
+        reply, informs : tuple
+            katcp request messages
+        """
         try:
             time.sleep(0.3)
             if katcprequestArg:
-                reply, informs = self.client.blocking_request(
+                reply, informs = client.blocking_request(
                     katcp.Message.request(katcprequest, katcprequestArg), timeout=timeout)
             else:
-                reply, informs = self.client.blocking_request(
+                reply, informs = client.blocking_request(
                     katcp.Message.request(katcprequest), timeout=timeout)
 
             assert reply.reply_ok()
             return reply, informs
         except Exception:
             self.logger.exception('Failed to execute katcp command')
-            return None
+            sys.exit(1)
+
+    def cleanup(self, client):
+        if self._started:
+            self.logger.debug('Some Cleaning Up!!!')
+            client.stop()
+            time.sleep(0.1)
+            if client.is_connected():
+                self.logger.error('Did not clean up client properly, %s' % client.bind_address)
+            client = None
+            gc.collect
 
     @property
     def get_sensor_values(self, i=1):
         try:
             assert self.katcp_sensor_port
             for i in xrange(i):
-                reply, informs = self.katcp_request(which_port=self.katcp_sensor_port,
+                reply, informs = self.sensor_request(self.sec_sensors_katcp_con,
                     katcprequest='sensor-value')
-            self.logger.info('Retrieved sensors successfully')
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
@@ -137,7 +174,7 @@ class SensorPoll(LoggingClass):
         try:
             assert self.katcp_sensor_port
             for i in xrange(i):
-                reply, informs = self.katcp_request(which_port=self.katcp_sensor_port,
+                reply, informs = self.sensor_request(self.sec_sensors_katcp_con,
                     katcprequest='sensor-value', katcprequestArg='hostname-functional-mapping')
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
@@ -150,7 +187,7 @@ class SensorPoll(LoggingClass):
         try:
             assert self.katcp_array_port
             for i in xrange(i):
-                reply, informs = self.katcp_request(which_port=self.katcp_array_port,
+                reply, informs = self.sensor_request(self.sec_client,
                     katcprequest='sensor-value', katcprequestArg='input-labelling')
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
@@ -279,28 +316,6 @@ class SensorPoll(LoggingClass):
     @property
     def map_fhost_sensors(self):
         """
-        Needs to be in this format
-
-        {
-                    'fhost00': [    # sensor, status
-                                    ['SKA-020709','host'],
-                                    ['fhost00', 'skarab020709-01'],
-                                    ['ant0_x', 'inputlabel'],
-                                    ['network', 'nominal'],
-                                    ['spead-rx', 'nominal'],
-                                    # ['network-reorder', 'nominal'],
-                                    ['network-Re', 'nominal'],
-                                    ['cd', 'warn'],
-                                    ['pfb', 'nominal'],
-                                    # missing sensor
-                                    # ['requant', 'warn'],
-                                    ['ct', 'nominal'],
-                                    ['spead-tx','nominal'],
-                                    ['network', 'error'],
-                                    ['->XEngine', 'xhost']
-                             ],
-         }
-
         {
              'fhost03': [
                             ['SKA-020709', 'warn'],
@@ -315,8 +330,6 @@ class SensorPoll(LoggingClass):
                             ['spead-tx', 'nominal'],
                             ['->XEngine', 'xhost']
                         ]
-
-
         }
 
         """
@@ -388,16 +401,11 @@ class SensorPoll(LoggingClass):
         self.create_dumps_dir
         if args.get('sensor_json', False):
             cur_path = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
-            # _filename = '%s/sensor_values_by_host.json' % cur_path
-            # self.logger.info('Writing sorted sensors by hosts to file: %s' % _filename)
-            # with open(_filename, 'w') as outfile:
-            #     json.dump(sensors, outfile, indent=4, sort_keys=True)
-
             _filename = '%s/json_dumps/sensor_values.json' % cur_path
-            self.logger.info('Writing sorted sensors by hosts to file: %s' % _filename)
+            self.logger.info('Updating sensors file: %s' % _filename)
             with open(_filename, 'w') as outfile:
                 json.dump(sensors, outfile, indent=4, sort_keys=True)
-            self.logger.info('Done writing to sensors to file')
+            self.logger.info('Done updating sensors file!!!')
         return sensors
 
 
@@ -435,22 +443,14 @@ if __name__ == '__main__':
 
     sensor_poll = SensorPoll(katcp_ip, katcp_port)
     main_logger = LoggingClass()
-
-    # Useful for debugging!!!
-    # pretty print
-    # pp.pprint(sensor_poll.get_sorted_sensors_by_host)
     try:
         poll_time = args.get('poll')
         main_logger.logger.info('Begin sensor polling every %s seconds!!!' % poll_time)
         while True:
-            # TODO: Upload sensors to dashboard
             sensor_values = sensor_poll.write_sorted_sensors_to_file()
-            # pretty print json dumps
-            # print json.dumps(sensor_poll.get_sorted_sensors_by_host, indent=4)
-            # pp.pprint(sensor_values)
+            time.sleep(poll_time)
             main_logger.logger.debug('Updating sensor on dashboard!!!')
             main_logger.logger.info('---------------------RELOADING SENSORS---------------------')
-            time.sleep(poll_time)
     except Exception as e:
         main_logger.logger.exception(e.message)
         sys.exit(1)
