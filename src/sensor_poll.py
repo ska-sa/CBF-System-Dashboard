@@ -47,7 +47,8 @@ class SensorPoll(LoggingClass):
             assert reply.reply_ok()
             katcp_array_list = informs[0].arguments
         except IndexError:
-            self.logger.exception('Seems like there is no running array!!!!')
+            self.logger.error('There is no running array on %s:%s!!!!' % (self.katcp_ip,
+                self.katcp_port))
             sys.exit(1)
         except Exception as e:
             self.logger.exception(e.message)
@@ -69,7 +70,7 @@ class SensorPoll(LoggingClass):
             self.client = None
             gc.collect
 
-    def katcp_request(self, which_port=7147, katcprequest='array-list', katcprequestArg=None, timeout=10):
+    def katcp_request(self, which_port, katcprequest='array-list', katcprequestArg=None, timeout=10):
         """
         Katcp requests
 
@@ -93,7 +94,7 @@ class SensorPoll(LoggingClass):
         if not self._started:
             self._started = True
             self.logger.info('Connecting to running sensors servlet and getting sensors')
-            self.client = katcp.BlockingClient(self.katcp_ip, which_port)
+            self.client = katcp.BlockingClient(self.katcp_ip, which_port, timeout=timeout)
             self.client.setDaemon(True)
             self.client.start()
             time.sleep(.1)
@@ -112,11 +113,10 @@ class SensorPoll(LoggingClass):
                     katcp.Message.request(katcprequest), timeout=timeout)
 
             assert reply.reply_ok()
+            return reply, informs
         except Exception:
             self.logger.exception('Failed to execute katcp command')
             return None
-        else:
-            return reply, informs
 
     @property
     def get_sensor_values(self, i=1):
@@ -191,15 +191,16 @@ class SensorPoll(LoggingClass):
                     i = i.replace('_y', '_xy')
                 elif '_x' in i:
                     i = i.replace('_x', '_xy')
-                elif '_v' in i:
-                    i = i.replace('_v', '_vh')
-                elif '_h' in i:
-                    i = i.replace('_v', '_vh')
+                elif 'v' in i:
+                    i = i.replace('v', '_vh')
+                elif 'h' in i:
+                    i = i.replace('h', '_vh')
                 else:
                     pass
                 update_maps.append(i)
+
             update_maps = sorted(update_maps)
-            input_mapping = dict(zip(input_mapping.keys(), update_maps))
+            input_mapping = dict(zip(sorted(input_mapping.keys()), update_maps))
             hostname_mapping = dict((v,k) for k,v in eval(hostname_mapping).iteritems())
             return [input_mapping, hostname_mapping]
 
@@ -325,7 +326,7 @@ class SensorPoll(LoggingClass):
         # F_LRU -> Host -> input_label -> network-trx -> spead-rx -> network-reorder -> cd -> pfb -->>
         #    -->> ct -> spead-tx -> network-trx : [To Xengine ]
         # issue reading cmc3 input labels
-        fhost_sig_chain = ['SKA', 'fhost', 'input', 'network', 'spead-rx', 'Net-ReOrd', 'cd', 'pfb',
+        fhost_sig_chain = ['-02', 'input', 'network', 'spead-rx', 'Net-ReOrd', 'cd', 'pfb',
         # fhost_sig_chain = ['SKA', 'fhost', 'network', 'spead-rx', 'Net-ReOrd', 'cd', 'pfb',
                            'ct', 'spead-tx', '->X']
 
@@ -346,21 +347,18 @@ class SensorPoll(LoggingClass):
 
         for host, _list in new_mapping.iteritems():
             if host in self.hostname_mapping:
-                new_hostname = self.hostname_mapping[host].upper().replace('RAB', '-').split('-01')[0]
+                new_hostname = host.replace('fhost', '') + self.hostname_mapping[host].replace(
+                    'skarab', '-').replace('-01', '')
             _ = [value.insert(0, new_hostname) for value in _list if len(value) == 1]
 
         for host, values in new_mapping.iteritems():
             if host in self.hostname_mapping:
-                new_hostname = self.hostname_mapping[host].upper().replace('RAB', '-').split('-01')[0]
-                values.insert(1, [host, self.hostname_mapping[host]])
-                # issues when reason cmc3 input labels
                 values.insert(2, [self.input_mapping[self.hostname_mapping[host]], 'inputlabel'])
                 values.append(['->XEngine', 'xhost'])
 
         # Update mappings
         _ = [listA.insert(_index, listA.pop(self.str_ind_frm_list(_sig, listA)))
               for _, listA in new_mapping.iteritems() for _index, _sig in enumerate(fhost_sig_chain)]
-
         return new_mapping
 
     def merged_sensors_dict(self, f_sensors, x_sensors):
