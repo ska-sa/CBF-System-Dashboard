@@ -25,8 +25,10 @@ from pprint import PrettyPrinter
 class LoggingClass(object):
     @property
     def logger(self):
-        name = '.'.join([os.path.basename(sys.argv[0]), self.__class__.__name__])
+        name = '.'.join(
+            [os.path.basename(sys.argv[0]), self.__class__.__name__])
         return logging.getLogger(name)
+
 
 class SensorPoll(LoggingClass):
 
@@ -43,18 +45,21 @@ class SensorPoll(LoggingClass):
         self.katcp_port = katcp_port
         try:
             self._started = False
-            self.primary_client = self.katcp_request(which_port=self.katcp_port)
+            self.primary_client = self.katcp_request(
+                which_port=self.katcp_port)
             atexit.register(self.cleanup, self.primary_client)
             assert isinstance(self.primary_client, katcp.client.BlockingClient)
             reply, informs = self.sensor_request(self.primary_client)
             assert reply.reply_ok()
             katcp_array_list = informs[0].arguments
             assert isinstance(katcp_array_list, list)
-            self.katcp_array_port, self.katcp_sensor_port = [int(i) for i in katcp_array_list[1].split(',')]
+            self.katcp_array_port, self.katcp_sensor_port = [
+                int(i) for i in katcp_array_list[1].split(',')]
             assert isinstance(self.katcp_array_port, int)
             assert isinstance(self.katcp_sensor_port, int)
         except IndexError:
-            self.logger.error('No running array on %s:%s!!!!' % (self.katcp_ip, self.katcp_port))
+            self.logger.error('No running array on %s:%s!!!!' %
+                              (self.katcp_ip, self.katcp_port))
             sys.exit(1)
         except Exception as e:
             self.logger.exception(e.message)
@@ -62,17 +67,19 @@ class SensorPoll(LoggingClass):
         else:
             if self._started:
                 self._started = False
-                self.sec_client = self.katcp_request(which_port=self.katcp_array_port)
+                self.sec_client = self.katcp_request(
+                    which_port=self.katcp_array_port)
                 atexit.register(self.cleanup, self.sec_client)
 
             if self._started:
                 self._started = False
-                self.sec_sensors_katcp_con = self.katcp_request(which_port=self.katcp_sensor_port)
+                self.sec_sensors_katcp_con = self.katcp_request(
+                    which_port=self.katcp_sensor_port)
                 atexit.register(self.cleanup, self.sec_sensors_katcp_con)
 
             self.logger.info("Katcp connection established: IP %s, Primary Port: %s, Array Port: %s,"
                              " Sensor Port: %s" % (self.katcp_ip, self.katcp_port,
-                                self.katcp_array_port, self.katcp_sensor_port))
+                                                   self.katcp_array_port, self.katcp_sensor_port))
             self.input_mapping, self.hostname_mapping = self.do_mapping()
 
     def katcp_request(self, which_port, katcprequest='array-list', katcprequestArg=None, timeout=10):
@@ -98,7 +105,8 @@ class SensorPoll(LoggingClass):
         # self._started = False
         if not self._started:
             self._started = True
-            self.logger.info('Establishing katcp connection on %s:%s' % (self.katcp_ip, which_port))
+            self.logger.info('Establishing katcp connection on %s:%s' %
+                             (self.katcp_ip, which_port))
             client = katcp.BlockingClient(self.katcp_ip, which_port)
             client.setDaemon(True)
             client.start()
@@ -106,7 +114,8 @@ class SensorPoll(LoggingClass):
             try:
                 is_connected = client.wait_running(timeout)
                 assert is_connected
-                self.logger.info('Katcp client connected to %s:%s\n' % (self.katcp_ip, which_port))
+                self.logger.info('Katcp client connected to %s:%s\n' %
+                                 (self.katcp_ip, which_port))
                 return client
             except Exception:
                 client.stop()
@@ -153,7 +162,8 @@ class SensorPoll(LoggingClass):
             client.stop()
             time.sleep(0.1)
             if client.is_connected():
-                self.logger.error('Did not clean up client properly, %s' % client.bind_address)
+                self.logger.error(
+                    'Did not clean up client properly, %s' % client.bind_address)
             client = None
             gc.collect
 
@@ -163,7 +173,7 @@ class SensorPoll(LoggingClass):
             assert self.katcp_sensor_port
             for i in xrange(i):
                 reply, informs = self.sensor_request(self.sec_sensors_katcp_con,
-                    katcprequest='sensor-value')
+                                                     katcprequest='sensor-value')
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
@@ -176,7 +186,7 @@ class SensorPoll(LoggingClass):
             assert self.katcp_sensor_port
             for i in xrange(i):
                 reply, informs = self.sensor_request(self.sec_sensors_katcp_con,
-                    katcprequest='sensor-value', katcprequestArg='hostname-functional-mapping')
+                                                     katcprequest='sensor-value', katcprequestArg='hostname-functional-mapping')
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
@@ -189,7 +199,7 @@ class SensorPoll(LoggingClass):
             assert self.katcp_array_port
             for i in xrange(i):
                 reply, informs = self.sensor_request(self.sec_client,
-                    katcprequest='sensor-value', katcprequestArg='input-labelling')
+                                                     katcprequest='sensor-value', katcprequestArg='input-labelling')
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
@@ -218,11 +228,12 @@ class SensorPoll(LoggingClass):
             hostname_mapping = next(self.get_hostmapping)[-1][-1]
             input_mapping = next(self.get_inputlabel)[-1][-1]
         except Exception:
-            self.logger.exception('Serious error occurred, cannot continue!!! Missing sensors')
+            self.logger.exception(
+                'Serious error occurred, cannot continue!!! Missing sensors')
             sys.exit(1)
         else:
             input_mapping = dict(list(i)[0:3:2] for i in eval(input_mapping))
-            input_mapping = dict((v,k) for k,v in input_mapping.iteritems())
+            input_mapping = dict((v, k) for k, v in input_mapping.iteritems())
             update_maps = []
             for i in input_mapping.values():
                 if '_y' in i:
@@ -238,10 +249,11 @@ class SensorPoll(LoggingClass):
                 update_maps.append(i)
 
             update_maps = sorted(update_maps)
-            input_mapping = dict(zip(sorted(input_mapping.keys()), update_maps))
-            hostname_mapping = dict((v,k) for k,v in eval(hostname_mapping).iteritems())
+            input_mapping = dict(
+                zip(sorted(input_mapping.keys()), update_maps))
+            hostname_mapping = dict((v, k)
+                                    for k, v in eval(hostname_mapping).iteritems())
             return [input_mapping, hostname_mapping]
-
 
     def combined_Dict_List(self, *args):
         """
@@ -296,12 +308,15 @@ class SensorPoll(LoggingClass):
         for key, value in ordered_sensor_dict.iteritems():
             key_s = key.split('.')
             host = key_s[0].lower()
-            if host.startswith('fhost') and ('device-status' in key_s) :
-                new_value =  [x.replace('device-status', value) for x in key_s[1:]]
+            if host.startswith('fhost') and ('device-status' in key_s):
+                new_value = [x.replace('device-status', value)
+                             for x in key_s[1:]]
                 if 'network-reorder' in new_value:
                     # rename such that, it can fit on html/button
-                    new_value[0] = new_value[0].replace('network-reorder', 'Net-ReOrd')
-                new_dict = dict(izip_longest(*[iter([host, new_value])] * 2, fillvalue=""))
+                    new_value[0] = new_value[0].replace(
+                        'network-reorder', 'Net-ReOrd')
+                new_dict = dict(izip_longest(
+                    *[iter([host, new_value])] * 2, fillvalue=""))
                 mapping.append(new_dict)
             elif host.startswith('xhost'):
                 # Fix for xengines
@@ -341,7 +356,7 @@ class SensorPoll(LoggingClass):
         #    -->> ct -> spead-tx -> network-trx : [To Xengine ]
         # issue reading cmc3 input labels
         fhost_sig_chain = ['-02', 'input', 'network', 'spead-rx', 'Net-ReOrd', 'cd', 'pfb',
-        # fhost_sig_chain = ['SKA', 'fhost', 'network', 'spead-rx', 'Net-ReOrd', 'cd', 'pfb',
+                           # fhost_sig_chain = ['SKA', 'fhost', 'network', 'spead-rx', 'Net-ReOrd', 'cd', 'pfb',
                            'ct', 'spead-tx', '->X']
 
         ordered_sensor_dict = self.get_ordered_sensor_values
@@ -349,12 +364,15 @@ class SensorPoll(LoggingClass):
         for key, value in ordered_sensor_dict.iteritems():
             key_s = key.split('.')
             host = key_s[0].lower()
-            if host.startswith('fhost') and ('device-status' in key_s) :
-                new_value =  [x.replace('device-status', value) for x in key_s[1:]]
+            if host.startswith('fhost') and ('device-status' in key_s):
+                new_value = [x.replace('device-status', value)
+                             for x in key_s[1:]]
                 if 'network-reorder' in new_value:
                     # rename such that, it fits on html/button
-                    new_value[0] = new_value[0].replace('network-reorder', 'Net-ReOrd')
-                new_dict = dict(izip_longest(*[iter([host, new_value])] * 2, fillvalue=""))
+                    new_value[0] = new_value[0].replace(
+                        'network-reorder', 'Net-ReOrd')
+                new_dict = dict(izip_longest(
+                    *[iter([host, new_value])] * 2, fillvalue=""))
                 mapping.append(new_dict)
 
         new_mapping = self.combined_Dict_List(*mapping)
@@ -363,16 +381,18 @@ class SensorPoll(LoggingClass):
             if host in self.hostname_mapping:
                 new_hostname = host.replace('fhost', '') + self.hostname_mapping[host].replace(
                     'skarab', '-').replace('-01', '')
-            _ = [value.insert(0, new_hostname) for value in _list if len(value) == 1]
+            _ = [value.insert(0, new_hostname)
+                 for value in _list if len(value) == 1]
 
         for host, values in new_mapping.iteritems():
             if host in self.hostname_mapping:
-                values.insert(2, [self.input_mapping[self.hostname_mapping[host]], 'inputlabel'])
+                values.insert(
+                    2, [self.input_mapping[self.hostname_mapping[host]], 'inputlabel'])
                 values.append(['->XEngine', 'xhost'])
 
         # Update mappings
         _ = [listA.insert(_index, listA.pop(self.str_ind_frm_list(_sig, listA)))
-              for _, listA in new_mapping.iteritems() for _index, _sig in enumerate(fhost_sig_chain)]
+             for _, listA in new_mapping.iteritems() for _index, _sig in enumerate(fhost_sig_chain)]
         return new_mapping
 
     def merged_sensors_dict(self, f_sensors, x_sensors):
@@ -384,7 +404,6 @@ class SensorPoll(LoggingClass):
         merged_sensors.update(x_sensors)
         return merged_sensors
 
-
     # @property
     def create_dumps_dir(self):
         """
@@ -392,22 +411,27 @@ class SensorPoll(LoggingClass):
         """
         # Conflicted: To store in /tmp or not to store in , that is the question
         try:
-            _dir, _name = os.path.split(os.path.dirname(os.path.realpath(__file__)))
+            _dir, _name = os.path.split(
+                os.path.dirname(os.path.realpath(__file__)))
         except Exception:
-            _dir, _name = os.path.split(os.path.dirname(os.path.realpath(__name__)))
+            _dir, _name = os.path.split(
+                os.path.dirname(os.path.realpath(__name__)))
         path = _dir + '/json_dumps'
         if not os.path.exists(path):
-            self.logger.info('Created %s for storing json dumps.'% path)
+            self.logger.info('Created %s for storing json dumps.' % path)
             os.makedirs(path)
 
     def write_sorted_sensors_to_file(self,):
-        sensors = self.merged_sensors_dict(self.map_fhost_sensors, self.map_xhost_sensor)
+        sensors = self.merged_sensors_dict(
+            self.map_fhost_sensors, self.map_xhost_sensor)
         self.create_dumps_dir()
         if args.get('sensor_json', False):
             try:
-                cur_path = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
+                cur_path = os.path.split(
+                    os.path.dirname(os.path.abspath(__file__)))[0]
             except Exception:
-                cur_path = os.path.split(os.path.dirname(os.path.abspath(__name__)))[0]
+                cur_path = os.path.split(
+                    os.path.dirname(os.path.abspath(__name__)))[0]
             _filename = '%s/json_dumps/sensor_values.json' % cur_path
             self.logger.info('Updating sensors file: %s' % _filename)
             with open(_filename, 'w') as outfile:
@@ -436,7 +460,8 @@ if __name__ == '__main__':
     if args.get("log_level", 'INFO'):
         log_level = args.get("log_level", 'INFO').upper()
         try:
-            logging.basicConfig(level=getattr(logging, log_level), format=log_format)
+            logging.basicConfig(level=getattr(
+                logging, log_level), format=log_format)
         except AttributeError:
             raise RuntimeError('No such log level: %s' % log_level)
         else:
@@ -452,11 +477,13 @@ if __name__ == '__main__':
     main_logger = LoggingClass()
     try:
         poll_time = args.get('poll')
-        main_logger.logger.info('Begin sensor polling every %s seconds!!!' % poll_time)
+        main_logger.logger.info(
+            'Begin sensor polling every %s seconds!!!' % poll_time)
         while True:
             sensor_poll.write_sorted_sensors_to_file()
             main_logger.logger.debug('Updating sensor on dashboard!!!')
-            main_logger.logger.info('---------------------RELOADING SENSORS---------------------')
+            main_logger.logger.info(
+                '---------------------RELOADING SENSORS---------------------')
             time.sleep(poll_time)
     except Exception as e:
         main_logger.logger.exception(e.message)

@@ -28,6 +28,7 @@ from collections import OrderedDict
 from dash.dependencies import Event, Input, Output
 from pprint import PrettyPrinter
 
+
 def set_style(state):
     """
     Set html/css style according to sensor state
@@ -50,19 +51,19 @@ def set_style(state):
                 'backgroundColor': Config.COLORS[0]['background'],
                 'color': Config.COLORS[0]['color'],
                 'display': 'inline-block'
-                }
+            }
         elif state == 'warn':
             style = {
                 'backgroundColor': Config.COLORS[1]['background'],
                 'color': Config.COLORS[1]['color'],
                 'display': 'inline-block'
-                }
+            }
         elif state == 'error':
             style = {
                 'backgroundColor': Config.COLORS[2]['background'],
                 'color': Config.COLORS[2]['color'],
                 'display': 'inline-block'
-                }
+            }
         elif state == 'failure':
             style = {
                 'backgroundColor': Config.COLORS[3]['background'],
@@ -70,13 +71,13 @@ def set_style(state):
                 'font-weight': 'bold',
                 'font-style': 'italic',
                 'display': 'inline-block',
-                }
+            }
         else:
             style = {
                 'backgroundColor': Config.COLORS[4]['background'],
                 'color': Config.COLORS[4]['color'],
                 'display': 'inline-block'
-                }
+            }
     return style
 
 
@@ -91,7 +92,7 @@ def add_buttons(child, _id, _status):
     """
     # Button click redirection -- https://github.com/plotly/dash-html-components/issues/16
     _button = [html.Button(children=child,  style=set_style(_status), type='button',
-                            className="btn-xl", id='submit-button', n_clicks=0)]
+                           className="btn-xl", id='submit-button', n_clicks=0)]
     if '->XEngine' in child:
         return _button
     elif '-020' in child:
@@ -127,8 +128,8 @@ def generate_table():
     return [
         html.Div([
             html.Span(children=i, style={'display': 'inline-block'}) for i in generate_line(x)
-            ]) for x in sorted(sensor_format.keys())
-        ]
+        ]) for x in sorted(sensor_format.keys())
+    ]
 
 
 def get_ip_address(ifname):
@@ -146,7 +147,7 @@ def get_ip_address(ifname):
     """
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915,  # SIOCGIFADDR
-                            struct.pack('256s', ifname[:15]))[20:24])
+                                        struct.pack('256s', ifname[:15]))[20:24])
 
 
 def file_exists(url):
@@ -162,12 +163,13 @@ def file_exists(url):
     Boolean
     """
     request = urllib2.Request(url)
-    request.get_method = lambda : 'HEAD'
+    request.get_method = lambda: 'HEAD'
     try:
         response = urllib2.urlopen(request)
         return True
     except:
         return False
+
 
 def get_sensors(json_file):
     """
@@ -187,6 +189,7 @@ def get_sensors(json_file):
     with open(json_file) as json_data:
         data = json.load(json_data)
         return data
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -211,7 +214,8 @@ if __name__ == '__main__':
     if args.get("log_level", 'INFO'):
         log_level = args.get("log_level", 'INFO').upper()
         try:
-            logging.basicConfig(level=getattr(logging, log_level), format=log_format)
+            logging.basicConfig(level=getattr(
+                logging, log_level), format=log_format)
             logger = logging.getLogger(os.path.basename(sys.argv[0]))
         except AttributeError:
             raise RuntimeError('No such log level: %s' % log_level)
@@ -223,14 +227,17 @@ if __name__ == '__main__':
 
     if not args.get('sensor_path'):
         try:
-            cur_path = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
+            cur_path = os.path.split(
+                os.path.dirname(os.path.abspath(__file__)))[0]
         except NameError:
-            cur_path = os.path.split(os.path.dirname(os.path.abspath(__name__)))[0]
+            cur_path = os.path.split(
+                os.path.dirname(os.path.abspath(__name__)))[0]
 
         try:
             json_dumps_dir = os.path.join(cur_path + '/json_dumps')
             assert os.path.exists(json_dumps_dir)
-            sensor_values_json = max(glob.iglob(json_dumps_dir + '/*.json'), key=os.path.getctime)
+            sensor_values_json = max(glob.iglob(
+                json_dumps_dir + '/*.json'), key=os.path.getctime)
         except AssertionError:
             logger.error('No json dump file. Exiting!!!')
             sys.exit(1)
@@ -239,7 +246,6 @@ if __name__ == '__main__':
 
     sensor_format = get_sensors(sensor_values_json)
     host = get_ip_address(args.get('interface'))
-
 
     title = Config.title
     # metadata = Config.metadata
@@ -259,24 +265,23 @@ if __name__ == '__main__':
 
     # HTML Layout
     html_layout = html.Div([
-        html.H3('Last Updated: %s' % time.ctime(), style={"margin":0}),
+        html.H3('Last Updated: %s' % time.ctime(), style={"margin": 0}),
         html.Div(generate_table()),
         # html.Div([
         #     html.Br(),
         #     html.Div(id='output-state')
         #     ])
-        ])
+    ])
 
     app.layout = html.Div([
-        #html_layout])
+        # html_layout])
         html.Div([
             dcc.Interval(id='refresh', interval=10000),
             html.Div(id='content', className="container")
-            ]),
+        ]),
 
         # html.Br(), html.Div(id='output-state')
-        ])
-
+    ])
 
     # Update the `content` div with the `layout` object.
     # When you save this file, `debug=True` will re-run
@@ -297,6 +302,4 @@ if __name__ == '__main__':
     app.scripts.append_script({"external_url": jquery_link})
     app.css.append_css({"external_url": css_link})
     app.run_server(host=host, port=args.get('port'), debug=args.get('debug'),
-        extra_files=[sensor_values_json])
-
-
+                   extra_files=[sensor_values_json])
