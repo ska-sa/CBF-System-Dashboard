@@ -8,6 +8,7 @@
 import argcomplete
 import argparse
 import coloredlogs
+import Config
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -23,136 +24,9 @@ import time
 import types
 import urllib2
 
+from collections import OrderedDict
+from dash.dependencies import Event, Input, Output
 from pprint import PrettyPrinter
-
-
-def get_sensors(json_file):
-    """
-    Read sensor values stored in a json file
-
-    Params
-    ======
-    json_file: str
-        json path
-
-    Return
-    ======
-    data: dict
-        json dump in a dict format
-    """
-    logger.info('Reading latest sensor values from %s' % json_file)
-    with open(json_file) as json_data:
-        data = json.load(json_data)
-        return data
-
-# Sensors should be formatted like this
-# sensor_format = {
-#                     'fhost00': [    # sensor, status
-#                                     ['SKA-020709','host'],
-#                                     ['fhost00', 'skarab020709-01'],
-#                                     ['ant0_x', 'inputlabel'],
-#                                     ['network', 'nominal'],
-#                                     ['spead-rx', 'nominal'],
-#                                     # ['network-reorder', 'nominal'],
-#                                     ['network-Re', 'nominal'],
-#                                     ['cd', 'warn'],
-#                                     ['pfb', 'nominal'],
-#                                     ['requant', 'warn'],
-#                                     ['ct', 'nominal'],
-#                                     ['spead-tx','nominal'],
-#                                     ['network', 'error'],
-#                                     ['->XEngine', 'xhost']
-#                              ],
-#                     'fhost01': [    # sensor, status
-#                                     ['SKA-020710','host'],
-#                                     ['fhost01', 'skarab020710-01'],
-#                                     ['ant1_x', 'inputlabel'],
-#                                     ['network', 'nominal'],
-#                                     ['spead-rx', 'nominal'],
-#                                     # ['network-reorder', 'nominal'],
-#                                     ['network-Re', 'warn'],
-#                                     ['cd', 'nominal'],
-#                                     ['pfb', 'nominal'],
-#                                     ['requant', 'nominal'],
-#                                     ['ct', 'nominal'],
-#                                     ['spead-tx','nominal'],
-#                                     ['network', 'nominal'],
-#                                     ['->XEngine', 'xhost']
-#                              ],
-#                     'fhost02': [    # sensor, status
-#                                     ['SKA-020711','host'],
-#                                     ['fhost02', 'skarab020711-01'],
-#                                     ['ant1_x', 'inputlabel'],
-#                                     ['network', 'nominal'],
-#                                     ['spead-rx', 'nominal'],
-#                                     # ['network-reorder', 'nominal'],
-#                                     ['network-Re', 'nominal'],
-#                                     ['cd', 'warn'],
-#                                     ['pfb', 'nominal'],
-#                                     ['requant', 'error'],
-#                                     ['ct', 'nominal'],
-#                                     ['spead-tx','warn'],
-#                                     ['network', 'nominal'],
-#                                     ['->XEngine', 'xhost']
-#                              ],
-#                     'fhost03': [    # sensor, status
-#                                     ['SKA-020711','host'],
-#                                     ['fhost03', 'skarab020711-01'],
-#                                     ['ant2_x', 'inputlabel'],
-#                                     ['network', 'warn'],
-#                                     ['spead-rx', 'nominal'],
-#                                     # ['network-reorder', 'nominal'],
-#                                     ['network-Re', 'error'],
-#                                     ['cd', 'nominal'],
-#                                     ['pfb', 'nominal'],
-#                                     ['requant', 'nominal'],
-#                                     ['ct', 'nominal'],
-#                                     ['spead-tx','nominal'],
-#                                     ['network', 'nominal'],
-#                                     ['->XEngine', 'xhost']
-#                              ],
-#                     }
-
-# def format_sensors(sensor_data):
-#     fhosts = []
-#     xhosts = []
-#     for host, sensor_status in sensor_data.iteritems():
-#         host_ =  host.split('.')
-#         if 'device-status' in host_ and len(host_) > 2:
-#             host_.append(sensor_status.get('status'))
-#             if host_[0].startswith('fhost'):
-#                 fhosts.append(host_)
-#             if host_[0].startswith('xhost'):
-#                 xhosts.append(host_)
-#     return [sorted(fhosts), sorted(xhosts)]
-
-
-COLORS = [
-            {   # NOMINAL
-                'background': 'green',
-                'color': 'white',
-            },
-            {
-                # WARN
-                'background': 'orange',
-                'color': 'white',
-            },
-            {
-                # ERROR
-                'background': 'red',
-                'color': 'white',
-            },
-            {
-                # FAILURE
-                'background': 'white',
-                'color': 'red',
-            },
-            {
-                # Other
-                'background': 'blue',
-                'color': 'white',
-            },
-        ]
 
 def set_style(state):
     """
@@ -173,34 +47,34 @@ def set_style(state):
     if state:
         if state == 'nominal':
             style = {
-                'backgroundColor': COLORS[0]['background'],
-                'color': COLORS[0]['color'],
+                'backgroundColor': Config.COLORS[0]['background'],
+                'color': Config.COLORS[0]['color'],
                 'display': 'inline-block'
                 }
         elif state == 'warn':
             style = {
-                'backgroundColor': COLORS[1]['background'],
-                'color': COLORS[1]['color'],
+                'backgroundColor': Config.COLORS[1]['background'],
+                'color': Config.COLORS[1]['color'],
                 'display': 'inline-block'
                 }
         elif state == 'error':
             style = {
-                'backgroundColor': COLORS[2]['background'],
-                'color': COLORS[2]['color'],
+                'backgroundColor': Config.COLORS[2]['background'],
+                'color': Config.COLORS[2]['color'],
                 'display': 'inline-block'
                 }
         elif state == 'failure':
             style = {
-                'backgroundColor': COLORS[3]['background'],
-                'color': COLORS[3]['color'],
+                'backgroundColor': Config.COLORS[3]['background'],
+                'color': Config.COLORS[3]['color'],
                 'font-weight': 'bold',
                 'font-style': 'italic',
                 'display': 'inline-block',
                 }
         else:
             style = {
-                'backgroundColor': COLORS[4]['background'],
-                'color': COLORS[4]['color'],
+                'backgroundColor': Config.COLORS[4]['background'],
+                'color': Config.COLORS[4]['color'],
                 'display': 'inline-block'
                 }
     return style
@@ -216,13 +90,15 @@ def add_buttons(child, _id, _status):
 
     """
     # Button click redirection -- https://github.com/plotly/dash-html-components/issues/16
-    _button = [html.Button(children=child, id=_id, style=set_style(_status), type='button',
-                            className="btn-xl")]
+    _button = [html.Button(children=child,  style=set_style(_status), type='button',
+                            className="btn-xl", id='submit-button', n_clicks=0)]
     if '->XEngine' in child:
-        return html.A(_button)
+        return _button
+    elif '-020' in child:
+        return _button
     else:
         _button.append(html.Hr(className='horizontal'))
-        return html.A(_button)
+        return _button
 
 
 def generate_line(host):
@@ -235,7 +111,8 @@ def generate_line(host):
 
     """
     # print  [      (i[0], 'id_%s' % i[0], i[-1]) for i in sensor_format.get(host)]
-    return [add_buttons(i[0], 'id_%s' % i[0], i[-1]) for i in sensor_format.get(host)]
+    # return [add_buttons(i[0], 'id_%s' % i[0], i[-1]) for i in sensor_format.get(host)]
+    return [add_buttons(i[0], 'id_%s' % _c, i[-1]) for _c, i in enumerate(sensor_format.get(host))]
 
 
 def generate_table():
@@ -292,6 +169,24 @@ def file_exists(url):
     except:
         return False
 
+def get_sensors(json_file):
+    """
+    Read sensor values stored in a json file
+
+    Params
+    ======
+    json_file: str
+        json path
+
+    Return
+    ======
+    data: dict
+        json dump in a dict format
+    """
+    logger.info('Reading latest sensor values from %s' % json_file)
+    with open(json_file) as json_data:
+        data = json.load(json_data)
+        return data
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -345,27 +240,62 @@ if __name__ == '__main__':
     sensor_format = get_sensors(sensor_values_json)
     host = get_ip_address(args.get('interface'))
 
-    # Should I really argparse this???
-    title = 'CBF Sensors Dashboard'
-    metadata = 'charset=\"UTF-8\" http-equiv=\"refresh\" content=\"5\"'
-    js_link = 'https://codepen.io/mmphego/pen/KoJoZq.js'
+
+    title = Config.title
+    # metadata = Config.metadata
+    codepen_link = Config.js_link['codepen']
+    jquery_link = Config.js_link['jquery']
     try:
         css_link = "https://raw.githubusercontent.com/ska-sa/CBF-System-Dashboard/master/src/css/KoJoZq.css"
         assert file_exists(css_link)
     except AssertionError:
-        css_link = "https://codepen.io/mmphego/pen/KoJoZq.css"
+        css_link = Config.css_link
 
     app = dash.Dash(name=title)
+    # app.config.supress_callback_exceptions = True
     # Monkey patching
     app.title = types.StringType(title)
-    app.meta = types.StringType(metadata)
-    app.layout = html.Div([
-        html.H3('%s' % time.ctime(), style={"margin":0}), html.Div(generate_table())
+    # app.meta = types.StringType(metadata)
+
+    # HTML Layout
+    html_layout = html.Div([
+        html.H3('Last Updated: %s' % time.ctime(), style={"margin":0}),
+        html.Div(generate_table()),
+        # html.Div([
+        #     html.Br(),
+        #     html.Div(id='output-state')
+        #     ])
         ])
 
-    app.scripts.append_script({"external_url": js_link})
+    app.layout = html.Div([
+        #html_layout])
+        html.Div([
+            dcc.Interval(id='refresh', interval=10000),
+            html.Div(id='content', className="container")
+            ]),
+
+        # html.Br(), html.Div(id='output-state')
+        ])
+
+
+    # Update the `content` div with the `layout` object.
+    # When you save this file, `debug=True` will re-run
+    # this script, serving the new layout
+    @app.callback(Output('content', 'children'), events=[Event('refresh', 'interval')])
+    def display_layout():
+        return html_layout
+
+    # @app.callback(Output('output-state', 'children'), [Input('submit-button', 'n_clicks'), ])
+    # def update_output(n_clicks,):
+    #     if n_clicks:
+    #         logger.info('Button clicked')
+    #         # import IPython; globals().update(locals()); IPython.embed(header='Python Debugger')
+
+    #         return json.dumps(OrderedDict(sensor_format), indent=4)
+
+    app.scripts.append_script({"external_url": codepen_link})
+    app.scripts.append_script({"external_url": jquery_link})
     app.css.append_css({"external_url": css_link})
-    # import IPython; globals().update(locals()); IPython.embed(header='Python Debugger')
     app.run_server(host=host, port=args.get('port'), debug=args.get('debug'),
         extra_files=[sensor_values_json])
 
