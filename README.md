@@ -1,5 +1,22 @@
 # CBF-System-Dashboard
 
+## Dash
+
+### What is Dash?
+
+#### Dash is a Python framework for building analytical web applications. No JavaScript required.
+
+Build on top of Plotly.js, React, and Flask, Dash ties modern UI elements like dropdowns, sliders, and graphs directly to your analytical python code.
+
+To learn more about Dash, read the [extensive announcement letter](https://medium.com/@plotlygraphs/introducing-dash-5ecf7191b503) or [jump in with the user guide](https://plot.ly/dash).
+
+### Documentation
+
+View the [Dash User Guide](https://plot.ly/dash). It's chock-full of examples, pro tips, and guiding principles.
+
+More info visit: [Dash](https://github.com/plotly/dash)
+
+## Node-RED
 This project entails how Node-RED Dashboard is ran under Docker which shows the systems status and any arrays running.
 
 ![CBF Dashboard](https://raw.githubusercontent.com/ska-sa/CBF-System-Dashboard/master/images/dash.png)
