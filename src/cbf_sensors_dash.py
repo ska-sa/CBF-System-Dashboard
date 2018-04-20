@@ -41,6 +41,8 @@ parser.add_argument('-p', '--port', dest='port', action='store_true', default=88
                     help='flask port [Default: 8888]')
 parser.add_argument('--nodebug', dest='debug', action='store_false', default=True,
                     help='flask with no debug [Default: False]')
+parser.add_argument('--nothread', dest='threaded', action='store_false', default=True,
+                    help='flask with threading [Default: False]')
 parser.add_argument('--path', dest='sensor_path', action='store', default=None,
                     help='path to where the sensor data .json file is!')
 parser.add_argument('--loglevel', dest='log_level', action='store', default='INFO',
@@ -275,11 +277,11 @@ app.layout = html.Div([
         # Each "page" will modify this element
         html.Div(id='content-container'),
         # This Location component represents the URL bar
-        dcc.Location(id='url', refresh=False),
+        dcc.Location(id='url', refresh=True),
         ]),
     html.Div([
         dcc.Interval(id='refresh', interval=refresh_time),
-        html.Div(id='content',) #className="container")
+        html.Div(id='content')
         ])
     ])
 
@@ -295,23 +297,23 @@ def static_file(path):
     logger.info('Loaded css/js from %s' % static_folder)
     return send_from_directory(static_folder, path)
 
-# @app.callback(Output('content', 'children'), [Input('button', 'children')])
-# def get_button(children):
-#     import IPython; globals().update(locals()); IPython.embed(header='Python Debugger')
-
 @app.callback(Output('content-container', 'children'), [Input('url', 'pathname')])
 def display_page(pathname):
     if pathname == '/':
         return html_layout
     elif pathname == '/page-2':
+        _sensors = json.dumps(OrderedDict(sensor_format), indent=4, sort_keys=True,
+            separators=(',', ': '))
         return html.Div([
             dcc.Link(
-                html.A(json.dumps(OrderedDict(sensor_format), indent=4)), href="/"),
+                html.Pre(_sensors), href="/"), html.Br()
             ])
     else:
-        return html.Div('I guess this is like a 404 - no content available')
+        return html.Div([
+            html.A('I guess this is like a 404 - no content available. Click to Go Home', href='/')
+            ])
 
 
 if __name__ == '__main__':
     app.run_server(host=host, port=args.get('port'), debug=args.get('debug'),
-        extra_files=[sensor_values_json], )#threaded=True)
+        extra_files=[sensor_values_json], threaded=args.get('threaded'))
