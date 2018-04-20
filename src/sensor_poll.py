@@ -210,17 +210,12 @@ class SensorPoll(LoggingClass):
     def get_sensor_dict(self):
         sensor_value_informs = next(self.get_sensor_values)
         self.logger.debug('Converting sensor list to dict!!!')
-        # return dict((x[0], x[1:]) for x in [i[2:] for i in sensor_value_informs])
-        # return dict((x[0], dict([['status',x[1:]]])) for x in [i[2:] for i in sensor_value_informs])
-        # Return with sensor full name and state
-        # return dict((x[0], dict([['status',x[1]]])) for x in [i[2:] for i in sensor_value_informs])
-        return dict((x[0], x[1]) for x in [i[2:] for i in sensor_value_informs])
-
-    @property
-    def get_ordered_sensor_values(self):
-        self.logger.debug('Converting sensor dict to ordered!!!')
-        _sensor_values = self.get_sensor_dict
-        return OrderedDict(sorted(_sensor_values.items()))
+        # sensors name + status + value
+        self.original_sensors = dict((x[0], x[1:]) for x in [i[2:] for i in sensor_value_informs])
+        # sensors name and status
+        simplified_sensors = dict((x[0], x[1]) for x in [i[2:] for i in sensor_value_informs])
+        simplified_ordered_sensors = OrderedDict(sorted(simplified_sensors.items()))
+        return simplified_ordered_sensors
 
     def do_mapping(self):
         self.logger.debug('Mapping input labels and hostnames')
@@ -303,7 +298,7 @@ class SensorPoll(LoggingClass):
 
         """
         self.logger.debug('Sorting ordered sensor dict by xhosts!!!')
-        ordered_sensor_dict = self.get_ordered_sensor_values
+        ordered_sensor_dict = self.get_sensor_dict
         mapping = []
         for key, value in ordered_sensor_dict.iteritems():
             key_s = key.split('.')
@@ -359,7 +354,7 @@ class SensorPoll(LoggingClass):
                            # fhost_sig_chain = ['SKA', 'fhost', 'network', 'spead-rx', 'Net-ReOrd', 'cd', 'pfb',
                            'ct', 'spead-tx', '->X']
 
-        ordered_sensor_dict = self.get_ordered_sensor_values
+        ordered_sensor_dict = self.get_sensor_dict
         mapping = []
         for key, value in ordered_sensor_dict.iteritems():
             key_s = key.split('.')
@@ -394,6 +389,21 @@ class SensorPoll(LoggingClass):
         _ = [listA.insert(_index, listA.pop(self.str_ind_frm_list(_sig, listA)))
              for _, listA in new_mapping.iteritems() for _index, _sig in enumerate(fhost_sig_chain)]
         return new_mapping
+
+    @property
+    def get_original_mapped_sensors(self):
+        mapping = []
+        for key, value in self.original_sensors.iteritems():
+            host = key.split('.')[0].lower()
+            if host[1:].startswith('host'):
+                if value[0] != 'nominal':
+                    value.insert(0, key)
+                    new_dict = dict(izip_longest(*[iter([host, value])] * 2, fillvalue=""))
+                    mapping.append(new_dict)
+
+        new_mapping = self.combined_Dict_List(*mapping)
+        return new_mapping
+
 
     def merged_sensors_dict(self, f_sensors, x_sensors):
         """
@@ -433,9 +443,12 @@ class SensorPoll(LoggingClass):
                 cur_path = os.path.split(
                     os.path.dirname(os.path.abspath(__name__)))[0]
             _filename = '%s/json_dumps/sensor_values.json' % cur_path
+            _sensor_filename = '%s/json_dumps/ordered_sensor_values.json' % cur_path
             self.logger.info('Updating sensors file: %s' % _filename)
             with open(_filename, 'w') as outfile:
                 json.dump(sensors, outfile, indent=4, sort_keys=True)
+            with open(_sensor_filename, 'w') as outfile:
+                json.dump(self.get_original_mapped_sensors, outfile, indent=4, sort_keys=True)
             self.logger.info('Done updating sensors file!!!')
         # return sensors
 

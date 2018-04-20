@@ -13,6 +13,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import fcntl
+import flask
 import glob
 import json
 import logging
@@ -233,12 +234,17 @@ if not args.get('sensor_path'):
         json_dumps_dir = os.path.join(cur_path + '/json_dumps')
         assert os.path.exists(json_dumps_dir)
         sensor_values_json = max(glob.iglob(
-            json_dumps_dir + '/*.json'), key=os.path.getctime)
+            json_dumps_dir + '/sensor_values.json'), key=os.path.getctime)
     except AssertionError:
         logger.error('No json dump file. Exiting!!!')
         sys.exit(1)
 else:
     sensor_values_json = args.get('sensor_path')
+
+try:
+    ordered_sensor_dict = get_sensors(json_dumps_dir + '/ordered_sensor_values.json')
+except:
+    ordered_sensor_dict = {}
 
 sensor_format = get_sensors(sensor_values_json)
 host = get_ip_address(args.get('interface'))
@@ -277,7 +283,7 @@ app.layout = html.Div([
         # Each "page" will modify this element
         html.Div(id='content-container'),
         # This Location component represents the URL bar
-        dcc.Location(id='url', refresh=True),
+        dcc.Location(id='url', refresh=False),
         ]),
     html.Div([
         dcc.Interval(id='refresh', interval=refresh_time),
@@ -300,10 +306,16 @@ def static_file(path):
 @app.callback(Output('content-container', 'children'), [Input('url', 'pathname')])
 def display_page(pathname):
     if pathname == '/':
-        return html_layout
+        # return html_layout
+        pass
     elif pathname == '/page-2':
-        _sensors = json.dumps(OrderedDict(sensor_format), indent=4, sort_keys=True,
-            separators=(',', ': '))
+        try:
+            _sensors = json.dumps(OrderedDict(ordered_sensor_dict), indent=4, sort_keys=True,
+                separators=(',', ': '))
+        except:
+            _sensors = json.dumps(OrderedDict(sensor_format), indent=4, sort_keys=True,
+                separators=(',', ': '))
+
         return html.Div([
             dcc.Link(
                 html.Pre(_sensors), href="/"), html.Br()
