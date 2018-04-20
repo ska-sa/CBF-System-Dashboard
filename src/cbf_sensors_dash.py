@@ -31,7 +31,7 @@ from pprint import PrettyPrinter
 
 pp = PrettyPrinter(indent=4)
 log_level = None
-log_format = '%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(pathname)s : %(lineno)d - %(message)s'
+log_format = '%(asctime)s - %(name)s:%(process)d - %(levelname)s - %(module)s - %(pathname)s : %(lineno)d - %(message)s'
 
 parser = argparse.ArgumentParser(
     description='Should probably put the description here!')
@@ -113,13 +113,12 @@ def add_buttons(child, _id, _status):
     _button = [html.Button(children=child,  style=set_style(_status), type='button',
                            className="btn-xl", id=_id, n_clicks=0)]
     if '->XEngine' in child:
-        return _button
+        return html.A(_button, id='button', href='/page-2')
     elif '-020' in child:
-        return _button
+        return html.A(_button, id='button', href='/page-2')
     else:
         _button.append(html.Hr(className='horizontal'))
-        return _button
-
+        return html.A(_button, id='button', href='/page-2')
 
 def generate_line(host):
     """
@@ -132,7 +131,6 @@ def generate_line(host):
     """
     return [add_buttons(i[0], 'id_%s_%s' % (host, _c), i[-1])
             for _c, i in enumerate(sensor_format.get(host))]
-
 
 def generate_table():
     """
@@ -148,7 +146,6 @@ def generate_table():
             html.Span(children=i, style={'display': 'inline-block'}) for i in generate_line(x)
         ]) for x in sorted(sensor_format.keys())
     ]
-
 
 def get_ip_address(ifname):
     """
@@ -166,7 +163,6 @@ def get_ip_address(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915,  # SIOCGIFADDR
                                         struct.pack('256s', ifname[:15]))[20:24])
-
 
 def file_exists(url):
     """
@@ -188,7 +184,6 @@ def file_exists(url):
     except:
         return False
 
-
 def get_sensors(json_file):
     """
     Read sensor values stored in a json file
@@ -207,6 +202,8 @@ def get_sensors(json_file):
     with open(json_file) as json_data:
         data = json.load(json_data)
         return data
+
+
 
 if args.get("log_level", 'INFO'):
     log_level = args.get("log_level", 'INFO').upper()
@@ -245,8 +242,7 @@ sensor_format = get_sensors(sensor_values_json)
 host = get_ip_address(args.get('interface'))
 
 title = Config.title
-# metadata = Config.metadata
-# app.meta = types.StringType(metadata)
+refresh_time = int(Config.refresh_time)
 
 app = dash.Dash(name=title)
 try:
@@ -264,6 +260,8 @@ else:
 
 # Monkey patching
 app.title = types.StringType(title)
+# metadata = Config.metadata
+# app.meta = types.StringType(metadata)
 
 # HTML Layout
 html_layout = html.Div([
@@ -274,16 +272,19 @@ html_layout = html.Div([
 app.layout = html.Div([
     html.Link(rel='stylesheet', href='/static/stylesheet.css'),
     html.Div([
-        dcc.Interval(id='refresh', interval=10000),
-        html.Div(id='content', className="container")
-    ]),
-
-    # html.Br(), html.Div(id='output-state')
-])
+        # Each "page" will modify this element
+        html.Div(id='content-container'),
+        # This Location component represents the URL bar
+        dcc.Location(id='url', refresh=False),
+        ]),
+    html.Div([
+        dcc.Interval(id='refresh', interval=refresh_time),
+        html.Div(id='content',) #className="container")
+        ])
+    ])
 
 # Update the `content` div with the `layout` object.
-# When you save this file, `debug=True` will re-run
-# this script, serving the new layout
+# When you save this file, `debug=True` will re-run this script, serving the new layout
 @app.callback(Output('content', 'children'), events=[Event('refresh', 'interval')])
 def display_layout():
     return html_layout
@@ -294,6 +295,23 @@ def static_file(path):
     logger.info('Loaded css/js from %s' % static_folder)
     return send_from_directory(static_folder, path)
 
+# @app.callback(Output('content', 'children'), [Input('button', 'children')])
+# def get_button(children):
+#     import IPython; globals().update(locals()); IPython.embed(header='Python Debugger')
+
+@app.callback(Output('content-container', 'children'), [Input('url', 'pathname')])
+def display_page(pathname):
+    if pathname == '/':
+        return html_layout
+    elif pathname == '/page-2':
+        return html.Div([
+            dcc.Link(
+                html.A(json.dumps(OrderedDict(sensor_format), indent=4)), href="/"),
+            ])
+    else:
+        return html.Div('I guess this is like a 404 - no content available')
+
+
 if __name__ == '__main__':
     app.run_server(host=host, port=args.get('port'), debug=args.get('debug'),
-        extra_files=[sensor_values_json])
+        extra_files=[sensor_values_json], )#threaded=True)

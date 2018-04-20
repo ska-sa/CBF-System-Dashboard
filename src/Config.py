@@ -1,3 +1,4 @@
+
 title = "CBF Sensors Dashboard"
 metadata = 'charset="UTF-8" http-equiv="refresh" content="5"'
 # JS links
@@ -35,3 +36,5 @@ COLORS = [
         'color': 'black',
     },
 ]
+
+refresh_time = 10000
