@@ -115,13 +115,11 @@ def add_buttons(child, _id, _status):
     # Button click redirection -- https://github.com/plotly/dash-html-components/issues/16
     _button = [html.Button(children=child,  style=set_style(_status), type='button',
                            className="btn-xl", id=_id, n_clicks=0)]
-    if '->XEngine' in child:
-        return html.A(_button, id='button', href='/page-2')
-    elif '-020' in child:
-        return html.A(_button, id='button', href='/page-2')
-    else:
-        _button.append(html.Hr(className='horizontal'))
-        return html.A(_button, id='button', href='/page-2')
+    # if '-020' in child:
+    #     return html.A(_button, id='button', href='/page-2')
+    # else:
+    _button.append(html.Hr(className='horizontal'))
+    return html.A(_button, id='button', href='/page-2')
 
 def generate_line(host):
     """

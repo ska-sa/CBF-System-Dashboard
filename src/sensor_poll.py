@@ -21,6 +21,28 @@ from itertools import izip_longest
 from pprint import PrettyPrinter
 
 
+def combined_Dict_List(*args):
+    """
+    Combining two/more dictionaries into one with the same keys
+
+    Params
+    =======
+    args: list
+        list of dicts to combine
+
+    Return
+    =======
+    result: dict
+        combined dictionaries
+    """
+    result = {}
+    for _dict in args:
+        for key in (result.viewkeys() | _dict.keys()):
+            if key in _dict:
+                result.setdefault(key, []).extend([_dict[key]])
+    return result
+
+
 # This class could be imported from a utility module
 class LoggingClass(object):
     @property
@@ -186,7 +208,7 @@ class SensorPoll(LoggingClass):
             assert self.katcp_sensor_port
             for i in xrange(i):
                 reply, informs = self.sensor_request(self.sec_sensors_katcp_con,
-                                                     katcprequest='sensor-value', katcprequestArg='hostname-functional-mapping')
+                    katcprequest='sensor-value', katcprequestArg='hostname-functional-mapping')
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
@@ -199,7 +221,7 @@ class SensorPoll(LoggingClass):
             assert self.katcp_array_port
             for i in xrange(i):
                 reply, informs = self.sensor_request(self.sec_client,
-                                                     katcprequest='sensor-value', katcprequestArg='input-labelling')
+                    katcprequest='sensor-value', katcprequestArg='input-labelling')
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
@@ -250,27 +272,6 @@ class SensorPoll(LoggingClass):
                                     for k, v in eval(hostname_mapping).iteritems())
             return [input_mapping, hostname_mapping]
 
-    def combined_Dict_List(self, *args):
-        """
-        Combining two/more dictionaries into one with the same keys
-
-        Params
-        =======
-        args: list
-            list of dicts to combine
-
-        Return
-        =======
-        result: dict
-            combined dictionaries
-        """
-        result = {}
-        for _dict in args:
-            for key in (result.viewkeys() | _dict.keys()):
-                if key in _dict:
-                    result.setdefault(key, []).extend([_dict[key]])
-        return result
-
     def str_ind_frm_list(self, String, List):
         """
         Find the index of a string in a list
@@ -291,38 +292,88 @@ class SensorPoll(LoggingClass):
         except Exception:
             self.logger.exception('Failed to find the index of string in list')
 
-    @property
-    def map_xhost_sensor(self):
-        """
-        Needs to be in this format:
-
-        """
-        self.logger.debug('Sorting ordered sensor dict by xhosts!!!')
+    def new_mapping(self, _host):
+        self.logger.debug('Sorting ordered sensor dict by %ss!!!' % _host)
         ordered_sensor_dict = self.get_sensor_dict
         mapping = []
         for key, value in ordered_sensor_dict.iteritems():
             key_s = key.split('.')
             host = key_s[0].lower()
-            if host.startswith('fhost') and ('device-status' in key_s):
+            if host.startswith(_host) and ('device-status' in key_s):
                 new_value = [x.replace('device-status', value)
                              for x in key_s[1:]]
                 if 'network-reorder' in new_value:
-                    # rename such that, it can fit on html/button
-                    new_value[0] = new_value[0].replace(
-                        'network-reorder', 'Net-ReOrd')
-                new_dict = dict(izip_longest(
-                    *[iter([host, new_value])] * 2, fillvalue=""))
+                    # rename such that, it fits on html/button
+                    _indices = new_value.index('network-reorder')
+                    new_value[_indices] = new_value[_indices].replace('network-reorder', 'Net-ReOrd')
+                if 'missing-pkts' in new_value:
+                # rename such that, it fits on html/button
+                    _indices = new_value.index('missing-pkts')
+                    new_value[_indices] = new_value[_indices].replace('missing-pkts', 'hmcReOrd')
+                if 'bram-reorder' in new_value:
+                # rename such that, it fits on html/button
+                    _indices = new_value.index('bram-reorder')
+                    new_value[_indices] = new_value[_indices].replace('bram-reorder', 'bramReOrd')
+
+                new_dict = dict(izip_longest(*[iter([host, new_value])] * 2, fillvalue=""))
                 mapping.append(new_dict)
-            elif host.startswith('xhost'):
-                # Fix for xengines
-                # new_value =  [x.replace('device-status', value) for x in key_s[1:]]
-                # new_dict = dict(izip_longest(*[iter([host, new_value])] * 2, fillvalue=""))
-                # mapping.append(new_dict)
-                pass
-            else:
-                pass
-        # Fix for xengines
-        return {}
+
+        new_mapping = combined_Dict_List(*mapping)
+        for host, _list in new_mapping.iteritems():
+            if host in self.hostname_mapping:
+                new_hostname = host.replace(_host, '') + self.hostname_mapping[host].replace(
+                    'skarab', '-').replace('-01', '')
+            _ = [value.insert(0, new_hostname) for value in _list if len(value) == 1]
+
+        return new_mapping
+
+    @property
+    def map_xhost_sensors(self):
+        """
+        Needs to be in this format:
+            'host03': [
+                    ['03-020308', 'warn'],
+                    ['network', 'warn'],
+                    ['spead-rx', 'nominal'],
+                    ['Net-ReOrd', 'nominal'],
+                    ['hmcReOrd', 'warn'],
+                    ['bram-reorder', 'error'],
+                    ['vacc', 'error'],
+                    ['spead-tx', 'nominal']
+                ]
+            }
+
+        """
+        xhost_sig_chain = ['-02', 'network', 'spead-rx', 'Net-ReOrd','hmcReOrd',
+                           'bramReOrd', 'vacc', 'spead-tx'
+                            ]
+        new_mapping = self.new_mapping('xhost')
+        new_dict_mapping = {}
+        for keys, values in new_mapping.iteritems():
+            keys_ = keys[1:]
+            new_dict_mapping[keys_] = []
+            for value in values:
+                if (len(value) <= 2) and (not value[0].startswith('xeng')):
+                    new_dict_mapping[keys_].append(value)
+                if value[0].startswith('xeng') and value not in new_dict_mapping.values() :
+                    if 'vacc' in value:
+                        new_dict_mapping[keys_].append(value[1:])
+                    if 'spead-tx' in value:
+                        new_dict_mapping[keys_].append(value[1:])
+                    if 'bramReOrd' in value:
+                        new_dict_mapping[keys_].append(value[1:])
+
+        # _ = [listA.insert(_index, listA.pop(self.str_ind_frm_list(_sig, listA)))
+        #      for _, listA in new_dict_mapping.iteritems() for _index, _sig in enumerate(xhost_sig_chain)]
+        # return new_dict_mapping
+        fixed_dict_mapping  = {}
+        for host_, listA in new_dict_mapping.iteritems():
+            listA = listA[:len(xhost_sig_chain)]
+            for _index, _sig in enumerate(xhost_sig_chain):
+                listA.insert(_index, listA.pop(self.str_ind_frm_list(_sig, listA)))
+            fixed_dict_mapping[host_] = listA
+        return fixed_dict_mapping
+
 
     @property
     def map_fhost_sensors(self):
@@ -345,50 +396,31 @@ class SensorPoll(LoggingClass):
 
         """
 
-        self.logger.debug('Sorting ordered sensor dict by fhosts!!!')
         # Abbreviated signal chain
         # F_LRU -> Host -> input_label -> network-trx -> spead-rx -> network-reorder -> cd -> pfb -->>
         #    -->> ct -> spead-tx -> network-trx : [To Xengine ]
         # issue reading cmc3 input labels
         fhost_sig_chain = ['-02', 'input', 'network', 'spead-rx', 'Net-ReOrd', 'cd', 'pfb',
-                           # fhost_sig_chain = ['SKA', 'fhost', 'network', 'spead-rx', 'Net-ReOrd', 'cd', 'pfb',
-                           'ct', 'spead-tx', '->X']
+        # fhost_sig_chain = ['SKA', 'fhost', 'network', 'spead-rx', 'Net-ReOrd', 'cd', 'pfb',
+                           'ct', 'spead-tx',] # '->X']
 
-        ordered_sensor_dict = self.get_sensor_dict
-        mapping = []
-        for key, value in ordered_sensor_dict.iteritems():
-            key_s = key.split('.')
-            host = key_s[0].lower()
-            if host.startswith('fhost') and ('device-status' in key_s):
-                new_value = [x.replace('device-status', value)
-                             for x in key_s[1:]]
-                if 'network-reorder' in new_value:
-                    # rename such that, it fits on html/button
-                    new_value[0] = new_value[0].replace(
-                        'network-reorder', 'Net-ReOrd')
-                new_dict = dict(izip_longest(
-                    *[iter([host, new_value])] * 2, fillvalue=""))
-                mapping.append(new_dict)
-
-        new_mapping = self.combined_Dict_List(*mapping)
-
-        for host, _list in new_mapping.iteritems():
-            if host in self.hostname_mapping:
-                new_hostname = host.replace('fhost', '') + self.hostname_mapping[host].replace(
-                    'skarab', '-').replace('-01', '')
-            _ = [value.insert(0, new_hostname)
-                 for value in _list if len(value) == 1]
+        new_mapping = self.new_mapping('fhost')
 
         for host, values in new_mapping.iteritems():
             if host in self.hostname_mapping:
                 values.insert(
                     2, [self.input_mapping[self.hostname_mapping[host]], 'inputlabel'])
-                values.append(['->XEngine', 'xhost'])
+                # values.append(['->XEngine', 'xhost'])
 
+        new_dict_mapping = {}
+        for host, values in new_mapping.iteritems():
+            host_ = host[1:]
+            new_dict_mapping[host_] = values
         # Update mappings
         _ = [listA.insert(_index, listA.pop(self.str_ind_frm_list(_sig, listA)))
-             for _, listA in new_mapping.iteritems() for _index, _sig in enumerate(fhost_sig_chain)]
-        return new_mapping
+             for _, listA in new_dict_mapping.iteritems() for _index, _sig in enumerate(fhost_sig_chain)]
+
+        return new_dict_mapping
 
     @property
     def get_original_mapped_sensors(self):
@@ -401,18 +433,21 @@ class SensorPoll(LoggingClass):
                     new_dict = dict(izip_longest(*[iter([host, value])] * 2, fillvalue=""))
                     mapping.append(new_dict)
 
-        new_mapping = self.combined_Dict_List(*mapping)
+        new_mapping = combined_Dict_List(*mapping)
         return new_mapping
 
 
-    def merged_sensors_dict(self, f_sensors, x_sensors):
+    def merged_sensors_dict(self, dict1, dict2):
         """
         merge two dictionaries
         https://stackoverflow.com/questions/38987/how-to-merge-two-dictionaries-in-a-single-expression#26853961
         """
-        merged_sensors = f_sensors.copy()
-        merged_sensors.update(x_sensors)
-        return merged_sensors
+        for key, value in dict2.iteritems():
+            dict1.setdefault(key, []).extend(value)
+        return dict1
+        # merged_sensors = f_sensors.copy()
+        # merged_sensors.update(x_sensors)
+        # return merged_sensors
 
     # @property
     def create_dumps_dir(self):
@@ -433,7 +468,7 @@ class SensorPoll(LoggingClass):
 
     def write_sorted_sensors_to_file(self,):
         sensors = self.merged_sensors_dict(
-            self.map_fhost_sensors, self.map_xhost_sensor)
+            self.map_fhost_sensors, self.map_xhost_sensors)
         self.create_dumps_dir()
         if args.get('sensor_json', False):
             try:
