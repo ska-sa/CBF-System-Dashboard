@@ -1,11 +1,11 @@
 argcomplete
 coloredlogs
 context.api
-dash-core-components==0.22.1
-dash-html-components==0.10.0  # HTML components
-dash-renderer==0.12.1  # The dash front-end
-dash==0.21.0  # The core dash backend
-plotly
+dash-core-components>=0.22.1
+dash-html-components>=0.10.0  # HTML components
+dash-renderer>=0.12.1  # The dash front-end
+dash>=0.21.0  # The core dash backend
 jenkinsapi
 katcp
 paho-mqtt
+plotly

@@ -12,5 +12,7 @@ MOSQ_VERSION="mosquitto-${LINUX_VERSION}.list"
 wget http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key
 apt-key add mosquitto-repo.gpg.key && rm -rf mosquitto-repo.gpg.key
 wget -O /etc/apt/sources.list.d/"${MOSQ_VERSION}" http://repo.mosquitto.org/debian/"${MOSQ_VERSION}"
-apt-get update
-apt-get install -y $(cat apt-requirement.txt)
+wget https://bootstrap.pypa.io/get-pip.py && python get-pip.py
+pip install -Ir pip-requirements.txt
+apt-get update -qq && apt-get install -y $(grep -vE "^\s*#" apt-requirement.txt | tr "\n" " ")
+

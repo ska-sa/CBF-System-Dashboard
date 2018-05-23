@@ -5,3 +5,4 @@ mosquitto-clients
 openssh-client
 openssh-server
 vim
+screen
