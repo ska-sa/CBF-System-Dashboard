@@ -1,10 +1,5 @@
 #!/usr/bin/env python
 
-# ====================================
-# TODO
-# Multi-Page Apps and URL Support
-# https://dash.plot.ly/urls
-
 import argcomplete
 import argparse
 import coloredlogs
@@ -271,7 +266,7 @@ app.title = types.StringType(title)
 
 # HTML Layout
 html_layout = html.Div([
-    html.H3('Last Updated: %s' % time.ctime(), style={"margin": 0}),
+    html.H3('Last Updated: %s' % time.ctime(), style={"margin": 0, "color": "green"}),
     html.Div(generate_table()),
     ])
 

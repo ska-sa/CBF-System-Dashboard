@@ -9,3 +9,4 @@ jenkinsapi
 katcp
 paho-mqtt
 plotly
+ipython[all]

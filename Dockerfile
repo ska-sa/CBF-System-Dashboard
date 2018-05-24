@@ -24,6 +24,7 @@ COPY images/favicon.ico /usr/src/node-red/node_modules/node-red/public/
 
 # Handle npm deps, in order to install node-red packages, we need to chdir to /usr/src/node-red
 WORKDIR /usr/src/node-red
+
 # Node-RED NPM module and node dependencies
 RUN npm install -g node-red-admin node-red-contrib-cpu node-red-contrib-jenkins node-red-node-smooth
 RUN npm install node-red-contrib-os node-red-dashboard
@@ -31,17 +32,12 @@ RUN npm install node-red-contrib-os node-red-dashboard
 # Handle apt dependencies
 # https://superuser.com/questions/413463/catch-22-need-apt-utils-to-install-apt-utils#413913
 RUN apt-get update -qq && apt-get install -y --no-install-recommends apt-utils
-RUN dpkg --configure -a
+RUN apt-get install -y apt-utils lm-sensors mosquitto mosquitto-clients vim screen
 
-ENV CBFDASH /usr/local/src/cbf-dashboard
-RUN mkdir -p $CBFDASH
-COPY src/* $CBFDASH/
-WORKDIR $CBFDASH
-RUN bash setup.sh
+# Ideally copy cbf-dashboard and sensor polling codes to the container,
+# such that we can run the dashboard in the container.
 
-RUN bash OnScreenFeeder.sh '192.168.4.14:7147'
 # Clean up APT when done.
 RUN apt-get clean
 ENV DEBIAN_FRONTEND teletype
-# Change to working directory
-WORKDIR /usr/src/node-red
+

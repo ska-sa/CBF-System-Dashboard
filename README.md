@@ -1,6 +1,6 @@
 # CBF-System-Dashboard
 
-## Dash
+## 1. Dash
 
 ### What is Dash?
 
@@ -16,8 +16,8 @@ View the [Dash User Guide](https://plot.ly/dash). It's chock-full of examples, p
 
 More info visit: [Dash](https://github.com/plotly/dash)
 
-## Node-RED
-This project entails how Node-RED Dashboard is ran under Docker which shows the systems status and any arrays running.
+## 2. Node-RED
+This project entails how Node-RED Dashboard is ran under Docker which shows the systems status and any relevant information. 
 
 ![CBF Dashboard](https://raw.githubusercontent.com/ska-sa/CBF-System-Dashboard/master/images/dash.png)
 

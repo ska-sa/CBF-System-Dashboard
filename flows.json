@@ -309,7 +309,7 @@
         "type": "ui_link",
         "z": "",
         "name": "Sensors Dash",
-        "link": "localhost:8888",
+        "link": "http://localhost:8888",
         "icon": "open_in_browser",
         "target": "iframe",
         "order": 3
