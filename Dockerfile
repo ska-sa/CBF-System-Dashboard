@@ -4,15 +4,15 @@ ENV UPDATED_ON 2018-05-23
 
 ENV DEBIAN_FRONTEND noninteractive
 # User data directory, contains flows, config and nodes.
-COPY flows.json /data
+COPY src/flows.json /data
 
 # Node-Red editor webapp
 # Username: admin
 # Password: pass
-COPY settings.js /data
+COPY src/settings.js /data
 
 # Copy html template to nodered
-COPY index.mst /usr/src/node-red/node_modules/node-red/editor/templates/
+COPY src/index.mst /usr/src/node-red/node_modules/node-red/editor/templates/
 
 # Root user, such that apt can be accessible
 USER root
