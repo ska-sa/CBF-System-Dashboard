@@ -25,7 +25,7 @@
         "id": "3fb915a5.7ae9ba",
         "type": "mqtt-broker",
         "z": "",
-        "broker": "192.168.4.23",
+        "broker": "localhost",
         "port": "1883",
         "clientid": "",
         "usetls": false,
@@ -1051,7 +1051,7 @@
         "qos": "0",
         "broker": "3fb915a5.7ae9ba",
         "x": 170,
-        "y": 120,
+        "y": 320,
         "wires": [
             [
                 "881916fb.4eae88"
@@ -1067,7 +1067,7 @@
         "qos": "0",
         "broker": "3fb915a5.7ae9ba",
         "x": 160,
-        "y": 160,
+        "y": 360,
         "wires": [
             [
                 "b6ad9968.a6adc8"
@@ -1111,11 +1111,11 @@
         "type": "mqtt in",
         "z": "16ef74d2.7e23eb",
         "name": "",
-        "topic": "sensor_values/sensor_array_port",
+        "topic": "instrument/sensor_array_port",
         "qos": "0",
         "broker": "3fb915a5.7ae9ba",
-        "x": 180,
-        "y": 360,
+        "x": 160,
+        "y": 40,
         "wires": [
             [
                 "3587d16a.13bf8e"
@@ -1134,8 +1134,8 @@
         "label": "Running Instrument",
         "format": "{{msg.payload}}",
         "layout": "row-spread",
-        "x": 700,
-        "y": 120,
+        "x": 600,
+        "y": 320,
         "wires": []
     },
     {
@@ -1150,8 +1150,8 @@
         "label": "N. Xeng Hosts",
         "format": "{{msg.payload}}",
         "layout": "row-spread",
-        "x": 680,
-        "y": 160,
+        "x": 580,
+        "y": 360,
         "wires": []
     },
     {
@@ -1166,7 +1166,7 @@
         "label": "N. Channels",
         "format": "{{msg.payload}}",
         "layout": "row-spread",
-        "x": 670,
+        "x": 570,
         "y": 280,
         "wires": []
     },
@@ -1182,7 +1182,7 @@
         "label": "X Engine Data Destination",
         "format": "{{msg.payload}}",
         "layout": "row-spread",
-        "x": 720,
+        "x": 620,
         "y": 240,
         "wires": []
     },
@@ -1214,7 +1214,7 @@
         "label": "N. Feng Hosts",
         "format": "{{msg.payload}}",
         "layout": "row-spread",
-        "x": 680,
+        "x": 580,
         "y": 200,
         "wires": []
     },
@@ -1227,7 +1227,7 @@
         "qos": "0",
         "broker": "3fb915a5.7ae9ba",
         "x": 130,
-        "y": 440,
+        "y": 160,
         "wires": [
             [
                 "f655bf6c.e4bbf"
@@ -1246,8 +1246,8 @@
         "label": "Host IP",
         "format": "{{msg.payload}}",
         "layout": "row-spread",
-        "x": 660,
-        "y": 440,
+        "x": 560,
+        "y": 160,
         "wires": []
     },
     {
@@ -1259,7 +1259,7 @@
         "qos": "0",
         "broker": "3fb915a5.7ae9ba",
         "x": 140,
-        "y": 320,
+        "y": 80,
         "wires": [
             [
                 "e0aea4c5.ac33a8"
@@ -1278,8 +1278,8 @@
         "label": "Array Port",
         "format": "{{msg.payload}}",
         "layout": "row-spread",
-        "x": 670,
-        "y": 320,
+        "x": 570,
+        "y": 80,
         "wires": []
     },
     {
@@ -1291,7 +1291,7 @@
         "qos": "0",
         "broker": "3fb915a5.7ae9ba",
         "x": 140,
-        "y": 400,
+        "y": 120,
         "wires": [
             [
                 "f02e051c.c9cd28"
@@ -1310,8 +1310,8 @@
         "label": "Array Name",
         "format": "{{msg.payload}}",
         "layout": "row-spread",
-        "x": 670,
-        "y": 400,
+        "x": 570,
+        "y": 120,
         "wires": []
     },
     {
@@ -1323,7 +1323,7 @@
         "qos": "0",
         "broker": "3fb915a5.7ae9ba",
         "x": 110,
-        "y": 480,
+        "y": 400,
         "wires": [
             [
                 "ca21a1d2.ad365"
@@ -1342,8 +1342,8 @@
         "label": "Poll Time",
         "format": "{{msg.payload}}",
         "layout": "row-spread",
-        "x": 660,
-        "y": 480,
+        "x": 560,
+        "y": 400,
         "wires": []
     },
     {
@@ -1390,8 +1390,8 @@
         "crontab": "",
         "once": false,
         "onceDelay": "",
-        "x": 390,
-        "y": 520,
+        "x": 110,
+        "y": 440,
         "wires": [
             [
                 "881916fb.4eae88",
@@ -1490,8 +1490,8 @@
         "label": "Sensor Port",
         "format": "{{msg.payload}}",
         "layout": "row-spread",
-        "x": 670,
-        "y": 360,
+        "x": 570,
+        "y": 40,
         "wires": []
     }
 ]
