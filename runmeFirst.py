@@ -13,7 +13,7 @@ import subprocess
 parser = argparse.ArgumentParser(description='Should probably put the description here!')
 parser.add_argument('-i', '--interface', dest='interface', action='store', default='eth0',
                     help='network interface [Default: eth0]')
-parser.add_argument('-f', '--flowsFile', dest='FLOWS', action='store', default='flows.json',
+parser.add_argument('-f', '--flowsFile', dest='FLOWS', action='store', default='src/flows.json',
                     help='Node-Red flows [Default: flows.json]')
 
 args = vars(parser.parse_args())
