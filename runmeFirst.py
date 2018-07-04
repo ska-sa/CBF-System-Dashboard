@@ -11,8 +11,10 @@ import time
 import subprocess
 
 parser = argparse.ArgumentParser(description='Should probably put the description here!')
-parser.add_argument('-i', '--interface', dest='interface', action='store', default='eth0',
-                    help='network interface [Default: eth0]')
+parser.add_argument('--interface', dest='interface', action='store', default='eth0',
+                     help='network interface [Default: eth0]')
+parser.add_argument('--ip', dest='ip', action='store', default='10.103.254.6',
+                    help='IP Address to connect to [Default: 10.103.254.6]')
 parser.add_argument('-f', '--flowsFile', dest='FLOWS', action='store', default='src/flows.json',
                     help='Node-Red flows [Default: flows.json]')
 
@@ -48,6 +50,7 @@ def get_ip_address(ifname):
 
 if __name__ == '__main__':
     host = get_ip_address(args.get('interface'))
+    kcpclient = args.get('ip')
     hostname = os.uname()[1]
     flows_file = args.get('FLOWS')
     replaceAll(flows_file, 'localhost', host)
@@ -57,11 +60,11 @@ if __name__ == '__main__':
      "else, to killall screen session, \n"
      "Run: screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}' | xargs kill\n\n")
     print msg
-    subprocess.call(['/bin/bash', 'OnScreenFeeder.sh', '%s:7147' % host])
+    subprocess.call(['/bin/bash', 'OnScreenFeeder.sh', '{}:7147'.format(kcpclient)])
     os.chdir(dir_path)
     subprocess.call(["docker", "build", "-t", "cbf-dashboard/cbf-system-dashboard", "."])
     time.sleep(1)
-    subprocess.call(["docker", "run", "-d", "-h", "%s" % hostname, "--name=cbf-dash",
+    subprocess.call(["docker", "run", "-d", "-h", "{}".format(hostname), "--name=cbf-dash",
         "--restart=on-failure:10", "-p", "1880:1880", "cbf-dashboard/cbf-system-dashboard"])
 
-    print "Reminder:\n%s" % msg
+    print "Reminder:\n{}".format(msg)
