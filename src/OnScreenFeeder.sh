@@ -2,7 +2,7 @@
 if [ $# -eq 0 ]
   then
     printf "No argument provided, See example below.\n"
-    echo "$0 localhost:7174"
+    echo "$0 localhost:7147"
     exit
 fi
 
