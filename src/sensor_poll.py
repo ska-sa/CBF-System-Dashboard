@@ -369,7 +369,7 @@ class SensorPoll(LoggingClass):
             new_dict_mapping[keys_] = []
             for value in values:
                 if (len(value) <= 2) and (not value[0].startswith('xeng')):
-                    new_dict_mapping[keys].append(value)
+                    new_dict_mapping[keys_].append(value)
                 if value[0].startswith('xeng') and value not in new_dict_mapping.values():
                     if 'vacc' in value:
                         new_dict_mapping[keys_].append(value[1:])
