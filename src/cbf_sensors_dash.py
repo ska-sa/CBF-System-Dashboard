@@ -30,9 +30,7 @@ pp = PrettyPrinter(indent=4)
 log_level = None
 log_format = "%(asctime)s - %(name)s:%(process)d - %(levelname)s - %(module)s - %(pathname)s : %(lineno)d - %(message)s"
 
-parser = argparse.ArgumentParser(
-    description="Should probably put the description here!"
-)
+parser = argparse.ArgumentParser(description="Should probably put the description here!")
 parser.add_argument(
     "-i",
     "--interface",
@@ -187,10 +185,7 @@ def generate_table():
     """
     return [
         html.Div(
-            [
-                html.Span(children=i, style={"display": "inline-block"})
-                for i in generate_line(x)
-            ]
+            [html.Span(children=i, style={"display": "inline-block"}) for i in generate_line(x)]
         )
         for x in sorted(sensor_format.keys())
     ]
@@ -211,9 +206,7 @@ def get_ip_address(ifname):
     """
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     return socket.inet_ntoa(
-        fcntl.ioctl(
-            s.fileno(), 0x8915, struct.pack("256s", ifname[:15])  # SIOCGIFADDR
-        )[20:24]
+        fcntl.ioctl(s.fileno(), 0x8915, struct.pack("256s", ifname[:15]))[20:24]  # SIOCGIFADDR
     )
 
 
@@ -322,9 +315,7 @@ app.title = types.StringType(title)
 # HTML Layout
 html_layout = html.Div(
     [
-        html.H3(
-            "Last Updated: %s" % time.ctime(), style={"margin": 0, "color": "green"}
-        ),
+        html.H3("Last Updated: %s" % time.ctime(), style={"margin": 0, "color": "green"}),
         html.Div(generate_table()),
     ]
 )
@@ -340,9 +331,7 @@ app.layout = html.Div(
                 dcc.Location(id="url", refresh=False),
             ]
         ),
-        html.Div(
-            [dcc.Interval(id="refresh", interval=refresh_time), html.Div(id="content")]
-        ),
+        html.Div([dcc.Interval(id="refresh", interval=refresh_time), html.Div(id="content")]),
     ]
 )
 
@@ -368,17 +357,11 @@ def display_page(pathname):
     elif pathname == "/page-2":
         try:
             _sensors = json.dumps(
-                OrderedDict(ordered_sensor_dict),
-                indent=4,
-                sort_keys=True,
-                separators=(",", ": "),
+                OrderedDict(ordered_sensor_dict), indent=4, sort_keys=True, separators=(",", ": ")
             )
         except:
             _sensors = json.dumps(
-                OrderedDict(sensor_format),
-                indent=4,
-                sort_keys=True,
-                separators=(",", ": "),
+                OrderedDict(sensor_format), indent=4, sort_keys=True, separators=(",", ": ")
             )
 
         return html.Div([dcc.Link(html.Pre(_sensors), href="/"), html.Br()])
@@ -386,8 +369,7 @@ def display_page(pathname):
         return html.Div(
             [
                 html.A(
-                    "I guess this is like a 404 - no content available. Click to Go Home",
-                    href="/",
+                    "I guess this is like a 404 - no content available. Click to Go Home", href="/"
                 )
             ]
         )

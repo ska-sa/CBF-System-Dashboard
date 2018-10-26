@@ -7,7 +7,7 @@ help:
 	@echo "  run 				to run pre-built CBF-Sensor-Dash container"
 	@echo "  start  			to start an existing CBF-Sensor-Dash container"
 	@echo "  stop   			to stop an existing CBF-Sensor-Dash container"
-	@echo "  log      			to see the logs of a running container"
+	@echo "  logs      			to see the logs of a running container"
 	@echo "  shell      			to execute a shell on CBF-Sensor-Dash container"
 	@echo "  clean      			to stop and delete CBF-Sensor-Dash container"
 
