@@ -32,7 +32,6 @@ def retry(func, count=3, wait_time=300):
                     continue
                 break
         raise retExc
-
     return wrapper
 
 
@@ -65,6 +64,7 @@ class LoggingClass(object):
         log_format = "%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(pathname)s : %(lineno)d - %(message)s"
         name = ".".join([os.path.basename(sys.argv[0]), self.__class__.__name__])
         logging.basicConfig(format=log_format)
+        coloredlogs.install(fmt=log_format)
         return logging.getLogger(name)
 
 
@@ -99,9 +99,12 @@ class SensorPoll(LoggingClass):
             assert isinstance(self.katcp_array_port, int)
             assert isinstance(self.katcp_sensor_port, int)
         except Exception:
-            self.logger.exception(
-                "No running array on {}:{}!!!!".format(self.katcp_ip, self.katcp_port)
+            self.logger.error(
+                "No running array on {}:{}!!!!".format(self.katcp_ip, self.katcp_port),
+                #exc_info=True
             )
+            if self.primary_client.is_connected():
+                self.cleanup(self.primary_client)
             raise
         else:
             if self._started:
@@ -129,7 +132,12 @@ class SensorPoll(LoggingClass):
             try:
                 self.input_mapping, self.hostname_mapping = self.do_mapping()
             except Exception:
-                self.logger.exception("Ayeyeyeye! it broke cannot do mappings")
+                self.cleanup(self.sec_client)
+                self.cleanup(self.sec_sensors_katcp_con)
+                self.logger.error(
+                    "Ayeyeyeye! it broke cannot do mappings",
+                             # exc_info=True
+                    )
                 raise
 
     def katcp_request(
@@ -177,7 +185,7 @@ class SensorPoll(LoggingClass):
                 return client
             except Exception:
                 client.stop()
-                self.logger.exception("Could not connect to katcp, timed out.")
+                self.logger.error("Could not connect to katcp, timed out.")
 
     def sensor_request(
         self, client, katcprequest="array-list", katcprequestArg=None, timeout=10
@@ -213,8 +221,8 @@ class SensorPoll(LoggingClass):
                 )
             assert reply.reply_ok()
         except Exception:
-            self.logger.exception("Failed to execute katcp command")
-            time.sleep(20)
+            self.logger.error("Failed to execute katcp command")
+            # time.sleep(20)
             raise
         else:
             return reply, informs
@@ -238,10 +246,11 @@ class SensorPoll(LoggingClass):
             reply, informs = self.sensor_request(
                 self.sec_sensors_katcp_con, katcprequest="sensor-value"
             )
+            assert reply.reply_ok()
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
-            self.logger.exception("No Sensors!!! Exiting!!!")
+            self.logger.error("No Sensors!!! Exiting!!!")
             raise
 
     @property
@@ -253,10 +262,12 @@ class SensorPoll(LoggingClass):
                 katcprequest="sensor-value",
                 katcprequestArg="hostname-functional-mapping",
             )
+            assert reply.reply_ok()
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
-            self.logger.exception("No Sensors!!! Exiting!!!")
+            self.cleanup(self.sec_sensors_katcp_con)
+            self.logger.error("No Sensors!!! Exiting!!!")
             raise
 
     @property
@@ -269,10 +280,12 @@ class SensorPoll(LoggingClass):
                     katcprequest="sensor-value",
                     katcprequestArg="input-labelling",
                 )
+                assert reply.reply_ok()
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
-            self.logger.exception("No Sensors!!! Exiting!!!")
+            self.cleanup(self.sec_client)
+            self.logger.error("No Sensors!!! Exiting!!!")
             raise
 
     @property
@@ -294,12 +307,12 @@ class SensorPoll(LoggingClass):
             raise exc
 
     def do_mapping(self):
-        self.logger.debug("Mapping input labels and hostnames")
         try:
+            self.logger.debug("Mapping input labels and hostnames")
             hostname_mapping = next(self.get_hostmapping)[-1][-1]
             input_mapping = next(self.get_inputlabel)[-1][-1]
         except Exception:
-            self.logger.exception(
+            self.logger.error(
                 "Serious error occurred, cannot continue!!! Missing sensors"
             )
             raise
@@ -327,7 +340,7 @@ class SensorPoll(LoggingClass):
             )
             return [input_mapping, hostname_mapping]
 
-    def str_ind_frm_list(self, String, List):
+    def get_list_index(self, String, List):
         """
         Find the index of a string in a list
 
@@ -345,50 +358,55 @@ class SensorPoll(LoggingClass):
         try:
             return [_c for _c, i in enumerate(List) if any(String in x for x in i)][0]
         except Exception:
-            self.logger.exception("Failed to find the index of string in list")
+            self.logger.error("Failed to find the index of string in list")
 
     def new_mapping(self, _host):
-        self.logger.debug("Sorting ordered sensor dict by %ss!!!" % _host)
-        ordered_sensor_dict = self.get_sensor_dict
-        mapping = []
-        for key, value in ordered_sensor_dict.iteritems():
-            key_s = key.split(".")
-            host = key_s[0].lower()
-            if host.startswith(_host) and ("device-status" in key_s):
-                new_value = [x.replace("device-status", value) for x in key_s[1:]]
-                if "network-reorder" in new_value:
-                    # rename such that, it fits on html/button
-                    _indices = new_value.index("network-reorder")
-                    new_value[_indices] = new_value[_indices].replace(
-                        "network-reorder", "Net-ReOrd"
-                    )
-                if "missing-pkts" in new_value:
-                    # rename such that, it fits on html/button
-                    _indices = new_value.index("missing-pkts")
-                    new_value[_indices] = new_value[_indices].replace(
-                        "missing-pkts", "hmcReOrd"
-                    )
-                if "bram-reorder" in new_value:
-                    # rename such that, it fits on html/button
-                    _indices = new_value.index("bram-reorder")
-                    new_value[_indices] = new_value[_indices].replace(
-                        "bram-reorder", "bramReOrd"
-                    )
+        try:
+            self.logger.debug("Sorting ordered sensor dict by %ss!!!" % _host)
+            ordered_sensor_dict = self.get_sensor_dict
+            assert isinstance(ordered_sensor_dict, OrderedDict)
+        except Exception:
+            pass
+        else:
+            mapping = []
+            for key, value in ordered_sensor_dict.iteritems():
+                key_s = key.split(".")
+                host = key_s[0].lower()
+                if host.startswith(_host) and ("device-status" in key_s):
+                    new_value = [x.replace("device-status", value) for x in key_s[1:]]
+                    if "network-reorder" in new_value:
+                        # rename such that, it fits on html/button
+                        _indices = new_value.index("network-reorder")
+                        new_value[_indices] = new_value[_indices].replace(
+                            "network-reorder", "Net-ReOrd"
+                        )
+                    if "missing-pkts" in new_value:
+                        # rename such that, it fits on html/button
+                        _indices = new_value.index("missing-pkts")
+                        new_value[_indices] = new_value[_indices].replace(
+                            "missing-pkts", "hmcReOrd"
+                        )
+                    if "bram-reorder" in new_value:
+                        # rename such that, it fits on html/button
+                        _indices = new_value.index("bram-reorder")
+                        new_value[_indices] = new_value[_indices].replace(
+                            "bram-reorder", "bramReOrd"
+                        )
 
-                new_dict = dict(
-                    izip_longest(*[iter([host, new_value])] * 2, fillvalue="")
-                )
-                mapping.append(new_dict)
+                    new_dict = dict(
+                        izip_longest(*[iter([host, new_value])] * 2, fillvalue="")
+                    )
+                    mapping.append(new_dict)
 
-        new_mapping = combined_Dict_List(*mapping)
-        for host, _list in new_mapping.iteritems():
-            if host in self.hostname_mapping:
-                new_hostname = host.replace(_host, "") + self.hostname_mapping[
-                    host
-                ].replace("skarab", "-").replace("-01", "")
-            [value.insert(0, new_hostname) for value in _list if len(value) == 1]
+            new_mapping = combined_Dict_List(*mapping)
+            for host, _list in new_mapping.iteritems():
+                if host in self.hostname_mapping:
+                    new_hostname = host.replace(_host, "") + self.hostname_mapping[
+                        host
+                    ].replace("skarab", "-").replace("-01", "")
+                [value.insert(0, new_hostname) for value in _list if len(value) == 1]
 
-        return new_mapping
+            return new_mapping
 
     @property
     def map_xhost_sensors(self):
@@ -417,35 +435,40 @@ class SensorPoll(LoggingClass):
             "vacc",
             "spead-tx",
         ]
-        new_mapping = self.new_mapping("xhost")
-        new_dict_mapping = {}
-        for keys, values in new_mapping.iteritems():
-            keys_ = keys[1:]
-            new_dict_mapping[keys_] = []
-            for value in values:
-                if (len(value) <= 2) and (not value[0].startswith("xeng")):
-                    new_dict_mapping[keys_].append(value)
-                if (
-                    value[0].startswith("xeng")
-                    and value not in new_dict_mapping.values()
-                ):
-                    if "vacc" in value:
-                        new_dict_mapping[keys_].append(value[1:])
-                    if "spead-tx" in value:
-                        new_dict_mapping[keys_].append(value[1:])
-                    if "bramReOrd" in value:
-                        new_dict_mapping[keys_].append(value[1:])
+        try:
+            new_mapping = self.new_mapping("xhost")
+            assert isinstance(new_mapping, dict)
+        except Exception:
+            pass
+        else:
+            new_dict_mapping = {}
+            for keys, values in new_mapping.iteritems():
+                keys_ = keys[1:]
+                new_dict_mapping[keys_] = []
+                for value in values:
+                    if (len(value) <= 2) and (not value[0].startswith("xeng")):
+                        new_dict_mapping[keys_].append(value)
+                    if (
+                        value[0].startswith("xeng")
+                        and value not in new_dict_mapping.values()
+                    ):
+                        if "vacc" in value:
+                            new_dict_mapping[keys_].append(value[1:])
+                        if "spead-tx" in value:
+                            new_dict_mapping[keys_].append(value[1:])
+                        if "bramReOrd" in value:
+                            new_dict_mapping[keys_].append(value[1:])
 
-        # _ = [listA.insert(_index, listA.pop(self.str_ind_frm_list(_sig, listA)))
-        #      for _, listA in new_dict_mapping.iteritems() for _index, _sig in enumerate(xhost_sig_chain)]
-        # return new_dict_mapping
-        fixed_dict_mapping = {}
-        for host_, listA in new_dict_mapping.iteritems():
-            listA = listA[: len(xhost_sig_chain)]
-            for _index, _sig in enumerate(xhost_sig_chain):
-                listA.insert(_index, listA.pop(self.str_ind_frm_list(_sig, listA)))
-            fixed_dict_mapping[host_] = listA
-        return fixed_dict_mapping
+            # _ = [listA.insert(_index, listA.pop(self.get_list_index(_sig, listA)))
+            #      for _, listA in new_dict_mapping.iteritems() for _index, _sig in enumerate(xhost_sig_chain)]
+            # return new_dict_mapping
+            fixed_dict_mapping = {}
+            for host_, listA in new_dict_mapping.iteritems():
+                listA = listA[: len(xhost_sig_chain)]
+                for _index, _sig in enumerate(xhost_sig_chain):
+                    listA.insert(_index, listA.pop(self.get_list_index(_sig, listA)))
+                fixed_dict_mapping[host_] = listA
+            return fixed_dict_mapping
 
     @property
     def map_fhost_sensors(self):
@@ -484,28 +507,31 @@ class SensorPoll(LoggingClass):
             "ct",
             "spead-tx",
         ]
+        try:
+            new_mapping = self.new_mapping("fhost")
+            assert isinstance(new_mapping, dict)
+        except Exception:
+            pass
+        else:
+            for host, values in new_mapping.iteritems():
+                if host in self.hostname_mapping:
+                    values.insert(
+                        2, [self.input_mapping[self.hostname_mapping[host]], "inputlabel"]
+                    )
+                    # values.append(['->XEngine', 'xhost'])
 
-        new_mapping = self.new_mapping("fhost")
+            new_dict_mapping = {}
+            for host, values in new_mapping.iteritems():
+                host_ = host[1:]
+                new_dict_mapping[host_] = values
+            # Update mappings
+            [
+                listA.insert(_index, listA.pop(self.get_list_index(_sig, listA)))
+                for _, listA in new_dict_mapping.iteritems()
+                for _index, _sig in enumerate(fhost_sig_chain)
+            ]
 
-        for host, values in new_mapping.iteritems():
-            if host in self.hostname_mapping:
-                values.insert(
-                    2, [self.input_mapping[self.hostname_mapping[host]], "inputlabel"]
-                )
-                # values.append(['->XEngine', 'xhost'])
-
-        new_dict_mapping = {}
-        for host, values in new_mapping.iteritems():
-            host_ = host[1:]
-            new_dict_mapping[host_] = values
-        # Update mappings
-        [
-            listA.insert(_index, listA.pop(self.str_ind_frm_list(_sig, listA)))
-            for _, listA in new_dict_mapping.iteritems()
-            for _index, _sig in enumerate(fhost_sig_chain)
-        ]
-
-        return new_dict_mapping
+            return new_dict_mapping
 
     @property
     def get_original_mapped_sensors(self):
@@ -555,11 +581,13 @@ class SensorPoll(LoggingClass):
                 self.map_fhost_sensors, self.map_xhost_sensors
             )
         except Exception:
-            self.logger.exception("Failed to map the host sensors")
+            self.logger.error(
+                "Failed to map the host sensors",
+                exc_info=True
+                )
             raise
-
-        self.create_dumps_dir()
-        if args.get("sensor_json", False):
+        else:
+            self.create_dumps_dir()
             try:
                 cur_path = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
             except Exception:
@@ -590,19 +618,12 @@ if __name__ == "__main__":
         help="IP:Port primary interface [Default: 127.0.0.1:7147]",
     )
     parser.add_argument(
-        "--poll-sensors",
+        "--poll-time",
         dest="poll",
         action="store",
         default=10,
         type=int,
-        help="Poll the sensors every 10 seconds [Default: 10]",
-    )
-    parser.add_argument(
-        "--json",
-        dest="sensor_json",
-        action="store_true",
-        default=False,
-        help="Write sensors to jsonFile",
+        help="Poll the sensors every x seconds [Default: 10]",
     )
     parser.add_argument(
         "--loglevel",
@@ -644,6 +665,5 @@ if __name__ == "__main__":
                 "---------------------RELOADING SENSORS---------------------"
             )
             time.sleep(poll_time)
-    except Exception as exc:
-        main_logger.logger.exception("Error occurred now breaking...")
-        raise exc
+    except Exception:
+        main_logger.logger.error("Error occurred now breaking...")
