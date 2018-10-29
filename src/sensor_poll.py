@@ -65,6 +65,7 @@ class LoggingClass(object):
         log_format = "%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(pathname)s : %(lineno)d - %(message)s"
         name = ".".join([os.path.basename(sys.argv[0]), self.__class__.__name__])
         logging.basicConfig(format=log_format)
+        coloredlogs.install(fmt=log_format)
         return logging.getLogger(name)
 
 
@@ -559,25 +560,24 @@ class SensorPoll(LoggingClass):
             raise
 
         self.create_dumps_dir()
-        if args.get("sensor_json", False):
-            try:
-                cur_path = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
-            except Exception:
-                cur_path = os.path.split(os.path.dirname(os.path.abspath(__name__)))[0]
-            else:
-                _filename = "%s/json_dumps/sensor_values.json" % cur_path
-                _sensor_filename = "%s/json_dumps/ordered_sensor_values.json" % cur_path
-                self.logger.info("Updating sensors file: %s" % _filename)
-                with open(_filename, "w") as outfile:
-                    json.dump(sensors, outfile, indent=4, sort_keys=True)
-                with open(_sensor_filename, "w") as outfile:
-                    json.dump(
-                        self.get_original_mapped_sensors,
-                        outfile,
-                        indent=4,
-                        sort_keys=True,
-                    )
-                self.logger.info("Done updating sensors file!!!")
+        try:
+            cur_path = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
+        except Exception:
+            cur_path = os.path.split(os.path.dirname(os.path.abspath(__name__)))[0]
+        else:
+            _filename = "%s/json_dumps/sensor_values.json" % cur_path
+            _sensor_filename = "%s/json_dumps/ordered_sensor_values.json" % cur_path
+            self.logger.info("Updating sensors file: %s" % _filename)
+            with open(_filename, "w") as outfile:
+                json.dump(sensors, outfile, indent=4, sort_keys=True)
+            with open(_sensor_filename, "w") as outfile:
+                json.dump(
+                    self.get_original_mapped_sensors,
+                    outfile,
+                    indent=4,
+                    sort_keys=True,
+                )
+            self.logger.info("Done updating sensors file!!!")
 
 
 if __name__ == "__main__":
@@ -596,13 +596,6 @@ if __name__ == "__main__":
         default=10,
         type=int,
         help="Poll the sensors every 10 seconds [Default: 10]",
-    )
-    parser.add_argument(
-        "--json",
-        dest="sensor_json",
-        action="store_true",
-        default=False,
-        help="Write sensors to jsonFile",
     )
     parser.add_argument(
         "--loglevel",
