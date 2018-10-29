@@ -32,7 +32,6 @@ def retry(func, count=3, wait_time=300):
                     continue
                 break
         raise retExc
-
     return wrapper
 
 
@@ -100,9 +99,12 @@ class SensorPoll(LoggingClass):
             assert isinstance(self.katcp_array_port, int)
             assert isinstance(self.katcp_sensor_port, int)
         except Exception:
-            self.logger.exception(
-                "No running array on {}:{}!!!!".format(self.katcp_ip, self.katcp_port)
+            self.logger.error(
+                "No running array on {}:{}!!!!".format(self.katcp_ip, self.katcp_port),
+                #exc_info=True
             )
+            if self.primary_client.is_connected():
+                self.cleanup(self.primary_client)
             raise
         else:
             if self._started:
@@ -130,7 +132,12 @@ class SensorPoll(LoggingClass):
             try:
                 self.input_mapping, self.hostname_mapping = self.do_mapping()
             except Exception:
-                self.logger.exception("Ayeyeyeye! it broke cannot do mappings")
+                self.cleanup(self.sec_client)
+                self.cleanup(self.sec_sensors_katcp_con)
+                self.logger.error(
+                    "Ayeyeyeye! it broke cannot do mappings",
+                             # exc_info=True
+                    )
                 raise
 
     def katcp_request(
@@ -178,7 +185,7 @@ class SensorPoll(LoggingClass):
                 return client
             except Exception:
                 client.stop()
-                self.logger.exception("Could not connect to katcp, timed out.")
+                self.logger.error("Could not connect to katcp, timed out.")
 
     def sensor_request(
         self, client, katcprequest="array-list", katcprequestArg=None, timeout=10
@@ -214,8 +221,8 @@ class SensorPoll(LoggingClass):
                 )
             assert reply.reply_ok()
         except Exception:
-            self.logger.exception("Failed to execute katcp command")
-            time.sleep(20)
+            self.logger.error("Failed to execute katcp command")
+            # time.sleep(20)
             raise
         else:
             return reply, informs
@@ -243,7 +250,7 @@ class SensorPoll(LoggingClass):
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
-            self.logger.exception("No Sensors!!! Exiting!!!")
+            self.logger.error("No Sensors!!! Exiting!!!")
             raise
 
     @property
@@ -259,7 +266,8 @@ class SensorPoll(LoggingClass):
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
-            self.logger.exception("No Sensors!!! Exiting!!!")
+            self.cleanup(self.sec_sensors_katcp_con)
+            self.logger.error("No Sensors!!! Exiting!!!")
             raise
 
     @property
@@ -276,7 +284,8 @@ class SensorPoll(LoggingClass):
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
-            self.logger.exception("No Sensors!!! Exiting!!!")
+            self.cleanup(self.sec_client)
+            self.logger.error("No Sensors!!! Exiting!!!")
             raise
 
     @property
@@ -303,7 +312,7 @@ class SensorPoll(LoggingClass):
             hostname_mapping = next(self.get_hostmapping)[-1][-1]
             input_mapping = next(self.get_inputlabel)[-1][-1]
         except Exception:
-            self.logger.exception(
+            self.logger.error(
                 "Serious error occurred, cannot continue!!! Missing sensors"
             )
             raise
@@ -349,7 +358,7 @@ class SensorPoll(LoggingClass):
         try:
             return [_c for _c, i in enumerate(List) if any(String in x for x in i)][0]
         except Exception:
-            self.logger.exception("Failed to find the index of string in list")
+            self.logger.error("Failed to find the index of string in list")
 
     def new_mapping(self, _host):
         try:
@@ -572,7 +581,10 @@ class SensorPoll(LoggingClass):
                 self.map_fhost_sensors, self.map_xhost_sensors
             )
         except Exception:
-            self.logger.exception("Failed to map the host sensors")
+            self.logger.error(
+                "Failed to map the host sensors",
+                exc_info=True
+                )
             raise
         else:
             self.create_dumps_dir()
@@ -653,6 +665,5 @@ if __name__ == "__main__":
                 "---------------------RELOADING SENSORS---------------------"
             )
             time.sleep(poll_time)
-    except Exception as exc:
-        main_logger.logger.exception("Error occurred now breaking...")
-        raise exc
+    except Exception:
+        main_logger.logger.error("Error occurred now breaking...")
