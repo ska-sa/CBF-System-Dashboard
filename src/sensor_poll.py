@@ -239,6 +239,7 @@ class SensorPoll(LoggingClass):
             reply, informs = self.sensor_request(
                 self.sec_sensors_katcp_con, katcprequest="sensor-value"
             )
+            assert reply.reply_ok()
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
@@ -254,6 +255,7 @@ class SensorPoll(LoggingClass):
                 katcprequest="sensor-value",
                 katcprequestArg="hostname-functional-mapping",
             )
+            assert reply.reply_ok()
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
@@ -270,6 +272,7 @@ class SensorPoll(LoggingClass):
                     katcprequest="sensor-value",
                     katcprequestArg="input-labelling",
                 )
+                assert reply.reply_ok()
             assert int(reply.arguments[-1])
             yield [inform.arguments for inform in informs]
         except AssertionError:
@@ -295,8 +298,8 @@ class SensorPoll(LoggingClass):
             raise exc
 
     def do_mapping(self):
-        self.logger.debug("Mapping input labels and hostnames")
         try:
+            self.logger.debug("Mapping input labels and hostnames")
             hostname_mapping = next(self.get_hostmapping)[-1][-1]
             input_mapping = next(self.get_inputlabel)[-1][-1]
         except Exception:
