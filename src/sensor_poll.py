@@ -590,12 +590,12 @@ if __name__ == "__main__":
         help="IP:Port primary interface [Default: 127.0.0.1:7147]",
     )
     parser.add_argument(
-        "--poll-sensors",
+        "--poll-time",
         dest="poll",
         action="store",
         default=10,
         type=int,
-        help="Poll the sensors every 10 seconds [Default: 10]",
+        help="Poll the sensors every x seconds [Default: 10]",
     )
     parser.add_argument(
         "--loglevel",
