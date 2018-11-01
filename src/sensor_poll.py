@@ -69,7 +69,7 @@ class LoggingClass(object):
 
 
 class SensorPoll(LoggingClass):
-    def __init__(self, katcp_ip="127.0.0.1", katcp_port=7147):
+    def __init__(self, katcp_ip="10.103.254.6", katcp_port=7147):
         """
         Parameters
         =========
@@ -614,8 +614,8 @@ if __name__ == "__main__":
         "--katcp",
         dest="katcp_con",
         action="store",
-        default="127.0.0.1:7147",
-        help="IP:Port primary interface [Default: 127.0.0.1:7147]",
+        default="10.103.254.6:7147",
+        help="IP:Port primary interface [Default: 10.103.254.6:7147]",
     )
     parser.add_argument(
         "--poll-time",
