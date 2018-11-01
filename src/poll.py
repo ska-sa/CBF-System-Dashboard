@@ -15,6 +15,8 @@ import logging
 import os
 import sys
 import time
+import threading
+import signal
 
 from collections import OrderedDict
 from itertools import izip_longest
@@ -45,6 +47,7 @@ class SensorPoll(object):
             atexit.register(self.io_manager.stop)
             self.io_wrapper.default_timeout = self._timeout
             self.io_manager.start()
+            self.io_manager.setDaemon =True
             self.rc = resource_client.KATCPClientResource(
                 dict(
                     name="{}".format(self.katcp_client_ip),
@@ -56,12 +59,13 @@ class SensorPoll(object):
             self._rct = resource_client.ThreadSafeKATCPClientResourceWrapper(
                 self.rc, self.io_wrapper)
             self._rct.start()
+            self._rct.setDaemon = True
             atexit.register(self._rct.stop)
             try:
                 self._rct.until_synced(timeout=self._timeout)
             except Exception:
                 self._rct.stop()
-                # self._rct.join()
+                self._rct.join()
         return self._rct
 
 
@@ -108,27 +112,22 @@ class SensorPoll(object):
                 else:
                     return self._katcp_rct_sensor
         else:
-            print "Well sensor resource_client is not None"
-
-            # import IPython; globals().update(locals()); IPython.embed(header='Python Debugger')
             if not self._katcp_rct_sensor.is_active():
                 self._katcp_rct_sensor.start()
-                print "weirdness"
+                atexit.register(self._katcp_rct_sensor.stop)
                 try:
                     time.sleep(1)
                     self._katcp_rct_sensor.until_synced(timeout=self._timeout)
                     return self._katcp_rct_sensor
                 except Exception:
                     self._katcp_rct_sensor.stop()
-                    # self._katcp_rct_sensor.join()
+                    self._katcp_rct_sensor.join()
             else:
-                print 'is active'
                 try:
                     assert hasattr(self._katcp_rct_sensor, "req"), 'sensors rct not running'
                     assert hasattr(self._katcp_rct_sensor.req, "sensor_value"), 'no sensors on sensors rct'
                     return self._katcp_rct_sensor
                 except AssertionError:
-                    print 'AssertionError(" error")'
                     del self._katcp_rct_sensor
                     self._katcp_rct_sensor = None
                     return self._katcp_rct_sensor
@@ -148,8 +147,10 @@ class SensorPoll(object):
 
 if __name__ == '__main__':
     sensors = SensorPoll()
-    # import IPython; globals().update(locals()); IPython.embed(header='Python Debugger')
-    while True:
-        print ("Waiting")
-        print (sensors.get_sensors())
-        time.sleep(5)
+    try:
+        while True:
+            print ("Waiting")
+            print (sensors.get_sensors())
+            time.sleep(5)
+    except KeyboardInterrupt:
+        import IPython; globals().update(locals()); IPython.embed(header='Python Debugger')
