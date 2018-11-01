@@ -351,6 +351,11 @@ def static_file(path):
 
 @app.callback(Output("content-container", "children"), [Input("url", "pathname")])
 def display_page(pathname):
+    # https://stackoverflow.com/questions/43981275/index-json-files-in-elasticsearch-using-python#43982859
+    # https://stackoverflow.com/questions/44053745/querying-elasticsearch-with-python-requests
+    # https://stackoverflow.com/questions/27189892/how-to-filter-json-array-in-python#27190305
+    # https://stackoverflow.com/questions/43371547/elasticsearch-python-client-indexing-json
+    # https://www.logicalfeed.com/posts/1182/upload-bulk-json-data-to-elasticsearch-using-python
     if pathname == "/":
         # return html_layout
         pass
