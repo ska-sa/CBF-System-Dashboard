@@ -1,0 +1,13 @@
+language: c
+sudo: required
+
+services:
+    - docker
+notifications:
+  email: false
+
+install:
+  - make build && make run
+
+script:
+- docker ps -a
