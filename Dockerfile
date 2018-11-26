@@ -1,7 +1,8 @@
-# I should proly document this!
+# Usage
+# docker run -d -p 8888:8888 -v ${PWD}/json_dumps/:/usr/src/json_dumps --name cbf-sensor-dash cbf-sensor-dash
 
 FROM python:2
-LABEL Mpho Mphego <mmphego@ska.ac.za>
+LABEL maintainer="Mpho Mphego <mmphego@ska.ac.za>"
 
 ENV DEBIAN_FRONTEND noninteractive
 WORKDIR /usr/src/apps
