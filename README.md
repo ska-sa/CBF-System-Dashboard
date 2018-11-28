@@ -4,9 +4,7 @@
 
 Simplified Docker based, CBF Sensor dashboard which polls the CBF sensors every x seconds and uses [Dash](https://plot.ly/dash) for its front-end.
 
-
-### What is Dash?
-
+## What is Dash?
 **Dash is a Python framework for building analytical web applications. No JavaScript/HTML required.**
 
 Build on top of Plotly.js, React, and Flask, Dash ties modern UI elements like dropdowns, sliders, and graphs directly to your analytical python code.
