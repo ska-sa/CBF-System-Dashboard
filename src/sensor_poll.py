@@ -245,7 +245,7 @@ class SensorPoll(LoggingClass):
                     "Did not clean up client properly, %s" % client.bind_address
                 )
             # client = None
-            gc.collect
+            # gc.collect
 
     @property
     def get_sensor_values(self):

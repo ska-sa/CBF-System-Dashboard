@@ -20,7 +20,7 @@ import coloredlogs
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-import flask
+# import flask
 from dash.dependencies import Event, Input, Output
 from flask import send_from_directory
 
@@ -222,12 +222,12 @@ def file_exists(url):
     ======
     Boolean
     """
-    request = urllib2.Request(url)
-    request.get_method = lambda: "HEAD"
     try:
-        response = urllib2.urlopen(request)
+        request = urllib2.Request(url)
+        request.get_method = lambda: "HEAD"
+        _ = urllib2.urlopen(request)
         return True
-    except:
+    except Exception:
         return False
 
 
@@ -272,7 +272,8 @@ if not args.get("sensor_path"):
 
     try:
         json_dumps_dir = os.path.join(cur_path + "/json_dumps")
-        assert os.path.exists(json_dumps_dir)
+        if not os.path.exists(json_dumps_dir):
+            raise AssertionError()
         sensor_values_json = max(
             glob.iglob(json_dumps_dir + "/sensor_values.json"), key=os.path.getctime
         )
@@ -284,7 +285,7 @@ else:
 
 try:
     ordered_sensor_dict = get_sensors(json_dumps_dir + "/ordered_sensor_values.json")
-except:
+except Exception:
     ordered_sensor_dict = {}
 
 sensor_format = get_sensors(sensor_values_json)
@@ -297,7 +298,8 @@ app = dash.Dash(name=title)
 try:
     css_link = Config.css_link
     logger.info("Loading css/js from URL: %s" % css_link)
-    assert file_exists(css_link)
+    if not file_exists(css_link):
+        raise AssertionError()
     app.css.config.serve_locally = False
     app.scripts.config.serve_locally = False
 except AssertionError:
