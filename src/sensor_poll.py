@@ -15,14 +15,15 @@ import time
 
 from collections import OrderedDict
 from itertools import izip_longest
+from ast import literal_eval as evaluate
 from pprint import PrettyPrinter
 
 
 def retry(func, count=3, wait_time=300):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        retExc = None
-        for i in xrange(count):
+        retExc = TypeError
+        for _ in xrange(count):
             while True:
                 try:
                     return func(*args, **kwargs)
@@ -88,16 +89,21 @@ class SensorPoll(LoggingClass):
             self._started = False
             self.primary_client = self.katcp_request(which_port=self.katcp_port)
             atexit.register(self.cleanup, self.primary_client)
-            assert isinstance(self.primary_client, katcp.client.BlockingClient)
+            if not isinstance(self.primary_client, katcp.client.BlockingClient):
+                raise AssertionError()
             reply, informs = self.sensor_request(self.primary_client)
-            assert reply.reply_ok()
+            if not reply.reply_ok():
+                raise AssertionError()
             katcp_array_list = informs[0].arguments
-            assert isinstance(katcp_array_list, list)
+            if not isinstance(katcp_array_list, list):
+                raise AssertionError()
             self.katcp_array_port, self.katcp_sensor_port = [
                 int(i) for i in katcp_array_list[1].split(",")
             ]
-            assert isinstance(self.katcp_array_port, int)
-            assert isinstance(self.katcp_sensor_port, int)
+            if not isinstance(self.katcp_array_port, int):
+                raise AssertionError()
+            if not isinstance(self.katcp_sensor_port, int):
+                raise AssertionError()
         except Exception:
             self.logger.error(
                 "No running array on {}:{}!!!!".format(self.katcp_ip, self.katcp_port),
@@ -176,7 +182,8 @@ class SensorPoll(LoggingClass):
             time.sleep(0.1)
             try:
                 is_connected = client.wait_running(timeout)
-                assert is_connected
+                if not is_connected:
+                    raise AssertionError()
                 self.logger.info(
                     "Katcp client connected to {}:{}\n".format(
                         self.katcp_ip, which_port
@@ -219,7 +226,8 @@ class SensorPoll(LoggingClass):
                 reply, informs = client.blocking_request(
                     katcp.Message.request(katcprequest), timeout=timeout
                 )
-            assert reply.reply_ok()
+            if not reply.reply_ok():
+                raise AssertionError()
         except Exception:
             self.logger.error("Failed to execute katcp command")
             # time.sleep(20)
@@ -236,18 +244,21 @@ class SensorPoll(LoggingClass):
                 self.logger.error(
                     "Did not clean up client properly, %s" % client.bind_address
                 )
-            client = None
+            # client = None
             gc.collect
 
     @property
     def get_sensor_values(self):
         try:
-            assert self.katcp_sensor_port
+            if not self.katcp_sensor_port:
+                raise AssertionError()
             reply, informs = self.sensor_request(
                 self.sec_sensors_katcp_con, katcprequest="sensor-value"
             )
-            assert reply.reply_ok()
-            assert int(reply.arguments[-1])
+            if not reply.reply_ok():
+                raise AssertionError()
+            if not int(reply.arguments[-1]):
+                raise AssertionError()
             yield [inform.arguments for inform in informs]
         except AssertionError:
             self.logger.error("No Sensors!!! Exiting!!!")
@@ -256,14 +267,17 @@ class SensorPoll(LoggingClass):
     @property
     def get_hostmapping(self):
         try:
-            assert self.katcp_sensor_port
+            if not self.katcp_sensor_port:
+                raise AssertionError()
             reply, informs = self.sensor_request(
                 self.sec_sensors_katcp_con,
                 katcprequest="sensor-value",
                 katcprequestArg="hostname-functional-mapping",
             )
-            assert reply.reply_ok()
-            assert int(reply.arguments[-1])
+            if not reply.reply_ok():
+                raise AssertionError()
+            if not int(reply.arguments[-1]):
+                raise AssertionError()
             yield [inform.arguments for inform in informs]
         except AssertionError:
             self.cleanup(self.sec_sensors_katcp_con)
@@ -273,15 +287,18 @@ class SensorPoll(LoggingClass):
     @property
     def get_inputlabel(self, i=1):
         try:
-            assert self.katcp_array_port
+            if not self.katcp_array_port:
+                raise AssertionError()
             for i in xrange(i):
                 reply, informs = self.sensor_request(
                     self.sec_client,
                     katcprequest="sensor-value",
                     katcprequestArg="input-labelling",
                 )
-                assert reply.reply_ok()
-            assert int(reply.arguments[-1])
+                if not reply.reply_ok():
+                    raise AssertionError()
+            if not int(reply.arguments[-1]):
+                raise AssertionError()
             yield [inform.arguments for inform in informs]
         except AssertionError:
             self.cleanup(self.sec_client)
@@ -317,7 +334,7 @@ class SensorPoll(LoggingClass):
             )
             raise
         else:
-            input_mapping = dict(list(i)[0:3:2] for i in eval(input_mapping))
+            input_mapping = dict(list(i)[0:3:2] for i in evaluate(input_mapping))
             input_mapping = dict((v, k) for k, v in input_mapping.iteritems())
             update_maps = []
             for i in input_mapping.values():
@@ -329,14 +346,13 @@ class SensorPoll(LoggingClass):
                     i = i.replace("v", "_vh")
                 elif "h" in i:
                     i = i.replace("h", "_vh")
-                else:
-                    pass
+
                 update_maps.append(i)
 
             update_maps = sorted(update_maps)
             input_mapping = dict(zip(sorted(input_mapping.keys()), update_maps))
             hostname_mapping = dict(
-                (v, k) for k, v in eval(hostname_mapping).iteritems()
+                (v, k) for k, v in evaluate(hostname_mapping).iteritems()
             )
             return [input_mapping, hostname_mapping]
 
@@ -364,9 +380,10 @@ class SensorPoll(LoggingClass):
         try:
             self.logger.debug("Sorting ordered sensor dict by %ss!!!" % _host)
             ordered_sensor_dict = self.get_sensor_dict
-            assert isinstance(ordered_sensor_dict, OrderedDict)
+            if not isinstance(ordered_sensor_dict, OrderedDict):
+                raise AssertionError()
         except Exception:
-            pass
+            self.logger.error("Failed to retrieve sensor dict", exc_info=True)
         else:
             mapping = []
             for key, value in ordered_sensor_dict.iteritems():
@@ -404,7 +421,8 @@ class SensorPoll(LoggingClass):
                     new_hostname = host.replace(_host, "") + self.hostname_mapping[
                         host
                     ].replace("skarab", "-").replace("-01", "")
-                [value.insert(0, new_hostname) for value in _list if len(value) == 1]
+                _ = [value.insert(0, new_hostname)
+                    for value in _list if len(value) == 1]
 
             return new_mapping
 
@@ -437,9 +455,10 @@ class SensorPoll(LoggingClass):
         ]
         try:
             new_mapping = self.new_mapping("xhost")
-            assert isinstance(new_mapping, dict)
+            if not isinstance(new_mapping, dict):
+                raise AssertionError()
         except Exception:
-            pass
+            self.logger.error("Failed to map xhosts", exc_info=True)
         else:
             new_dict_mapping = {}
             for keys, values in new_mapping.iteritems():
@@ -509,9 +528,10 @@ class SensorPoll(LoggingClass):
         ]
         try:
             new_mapping = self.new_mapping("fhost")
-            assert isinstance(new_mapping, dict)
+            if not isinstance(new_mapping, dict):
+                raise AssertionError()
         except Exception:
-            pass
+            self.logger.error("Failed to map fhosts", exc_info=True)
         else:
             for host, values in new_mapping.iteritems():
                 if host in self.hostname_mapping:
@@ -525,8 +545,7 @@ class SensorPoll(LoggingClass):
                 host_ = host[1:]
                 new_dict_mapping[host_] = values
             # Update mappings
-            [
-                listA.insert(_index, listA.pop(self.get_list_index(_sig, listA)))
+            _ = [listA.insert(_index, listA.pop(self.get_list_index(_sig, listA)))
                 for _, listA in new_dict_mapping.iteritems()
                 for _index, _sig in enumerate(fhost_sig_chain)
             ]
@@ -549,7 +568,8 @@ class SensorPoll(LoggingClass):
         new_mapping = combined_Dict_List(*mapping)
         return new_mapping
 
-    def merged_sensors_dict(self, dict1, dict2):
+    @staticmethod
+    def merged_sensors_dict(dict1, dict2):
         """
         merge two dictionaries
         https://stackoverflow.com/questions/38987/how-to-merge-two-dictionaries-in-a-single-expression#26853961
