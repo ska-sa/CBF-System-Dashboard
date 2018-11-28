@@ -1,11 +1,11 @@
 # CBF-System-Dashboard
+
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/087b7fe788d4415c8369dc0e365dff4c)](https://app.codacy.com/app/mmphego/CBF-System-Dashboard?utm_source=github.com&utm_medium=referral&utm_content=ska-sa/CBF-System-Dashboard&utm_campaign=Badge_Grade_Settings)
 [![Build Status](https://travis-ci.org/ska-sa/CBF-System-Dashboard.svg?branch=master)](https://travis-ci.org/ska-sa/CBF-System-Dashboard)
 
 Simplified Docker based, CBF Sensor dashboard which polls the CBF sensors every x seconds and uses [Dash](https://plot.ly/dash) for its front-end.
 
-
-### What is Dash?
+## What is Dash
 
 **Dash is a Python framework for building analytical web applications. No JavaScript/HTML required.**
 
@@ -19,14 +19,15 @@ More info visit: [Dash](https://github.com/plotly/dash)
 
 ### Usage
 
-**Build:**
+#### Build
+
 Build both the front-end and back-end docker images.
 
 ```shell
 make build
 ```
 
-**Run**
+#### Run
 
 ```shell
 make run
