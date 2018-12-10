@@ -24,7 +24,7 @@ More info visit: [Dash](https://github.com/plotly/dash)
 Build both the front-end and back-end docker images.
 
 ```shell
-make build
+make bootstrap
 ```
 
 #### Run
