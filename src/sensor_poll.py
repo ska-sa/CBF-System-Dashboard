@@ -375,7 +375,6 @@ class SensorPoll(LoggingClass):
             self.logger.error("Failed to retrieve sensor dict", exc_info=True)
         else:
             mapping = []
-            # import IPython; globals().update(locals()); IPython.embed(header='Python Debugger')
             for key, value in ordered_sensor_dict.iteritems():
                 key_s = key.split(".")
                 host = key_s[0].lower()
