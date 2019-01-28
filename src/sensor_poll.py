@@ -10,10 +10,10 @@ import json
 import katcp
 import logging
 import os
+import ipaddress
 import socket
 import sys
 import time
-import threading
 
 from collections import OrderedDict
 from itertools import izip_longest
@@ -21,7 +21,7 @@ from ast import literal_eval as evaluate
 from pprint import PrettyPrinter
 
 
-def retry(func, count=3, wait_time=300):
+def retry(func, count=20, wait_time=300):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         retExc = TypeError
@@ -77,15 +77,17 @@ class SensorPoll(LoggingClass):
         Parameters
         =========
         katcp_ip: str
-            IP to connect to! [Defaults: 127.0.0.1]
+            IP to connect to! [Defaults: 10.103.254.6]
         katcp_port: int
             Port to connect to! [Defaults: 7147]
         """
-        self.katcp_ip = katcp_ip
         try:
+            self.katcp_ip = katcp_ip
+            ipaddress.ip_address(u"{}".format(self.katcp_ip))
             self.hostname = ''.join(socket.gethostbyaddr(katcp_ip)[1])
         except Exception:
-            self.hostname = 'Unknown'
+            self.logger.exception("Invalid KATCP_IP!")
+            raise
         self.katcp_port = katcp_port
         self._kcp_connect()
 
@@ -241,11 +243,8 @@ class SensorPoll(LoggingClass):
             client.stop()
             time.sleep(0.1)
             if client.is_connected():
-                self.logger.error(
-                    "Did not clean up client properly, %s" % client.bind_address
-                )
-            # client = None
-            # gc.collect
+                self.logger.error("Did not clean up client properly, %s" % client.bind_address)
+
 
     @property
     def get_sensor_values(self):
