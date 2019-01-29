@@ -82,7 +82,6 @@ class SensorPoll(LoggingClass):
         katcp_port: int
             Port to connect to! [Defaults: 7147]
         """
-
         try:
             self.katcp_ip = katcp_ip
             ipaddress.ip_address(u"{}".format(self.katcp_ip))
@@ -102,14 +101,25 @@ class SensorPoll(LoggingClass):
             assert isinstance(self.primary_client, katcp.client.BlockingClient)
             reply, informs = self.sensor_request(self.primary_client)
             assert reply.reply_ok()
-            katcp_array_list = informs[0].arguments
-            assert isinstance(katcp_array_list, list)
-            self.katcp_array_port, self.katcp_sensor_port = [
-                int(i) for i in katcp_array_list[1].split(",")
-            ]
-            self.array_name = katcp_array_list[0]
-            assert isinstance(self.katcp_array_port, int)
-            assert isinstance(self.katcp_sensor_port, int)
+            if len(informs) > 1:
+                dict_informs = {}
+                for inform in informs:
+                    try:
+                        dict_informs[inform.arguments[0]] = [
+                            int(x) for x in array.arguments[1].split(',')
+                            ]
+                    except Exception:
+                        self.logger.exception("Failed to create informs dictionary.")
+
+            else:
+                katcp_array_list = informs[0].arguments
+                assert isinstance(katcp_array_list, list)
+                self.katcp_array_port, self.katcp_sensor_port = [
+                    int(i) for i in katcp_array_list[1].split(",")]
+                self.array_name = katcp_array_list[0]
+                assert isinstance(self.katcp_array_port, int)
+                assert isinstance(self.katcp_sensor_port, int)
+
         except Exception:
             self.logger.error(
                 "No running array on {}:{}!!!!".format(self.katcp_ip, self.katcp_port),
@@ -177,11 +187,8 @@ class SensorPoll(LoggingClass):
         # self._started = False
         if not self._started:
             self._started = True
-            self.logger.info(
-                "Establishing katcp connection on {}:{}".format(
-                    self.katcp_ip, which_port
-                )
-            )
+            self.logger.info("Establishing katcp connection on {}:{}".format(
+                self.katcp_ip, which_port))
             client = katcp.BlockingClient(self.katcp_ip, which_port)
             client.setDaemon(True)
             client.start()
