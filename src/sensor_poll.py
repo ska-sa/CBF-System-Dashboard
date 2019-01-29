@@ -73,17 +73,18 @@ class LoggingClass(object):
 
 
 class SensorPoll(LoggingClass):
-    def __init__(self, katcp_ip="10.103.254.6", katcp_port=7147):
+    def __init__(self, katcp_ip=None, katcp_port=7147):
         """
         Parameters
         =========
         katcp_ip: str
-            IP to connect to! [Defaults: 10.103.254.6]
+            IP to connect to!
         katcp_port: int
             Port to connect to! [Defaults: 7147]
         """
 
         try:
+            assert katcp_ip
             self.katcp_ip = katcp_ip
             ipaddress.ip_address(u"{}".format(self.katcp_ip))
             self.hostname = ''.join(socket.gethostbyaddr(katcp_ip)[1])
@@ -621,11 +622,18 @@ class SensorPoll(LoggingClass):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Receive data from a CBF and play.")
     parser.add_argument(
-        "--katcp",
-        dest="katcp_con",
+        "--hostip",
+        dest="katcp_host_ip",
         action="store",
-        default="10.103.254.6:7147",
-        help="IP:Port primary interface [Default: 10.103.254.6:7147]",
+        help="IP address of primary interface [eg: 10.103.254.6]",
+        required=True,
+    )
+    parser.add_argument(
+        "--port",
+        dest="katcp_host_port",
+        action="store",
+        default=7147,
+        help="Primary Port to connect to. [Default: 7147]",
     )
     parser.add_argument(
         "--poll-time",
@@ -660,8 +668,8 @@ if __name__ == "__main__":
             else:
                 coloredlogs.install(level=log_level)
 
-    if args.get("katcp_con"):
-        katcp_ip, katcp_port = args.get("katcp_con").split(":")
+    katcp_ip = args.get("katcp_host_ip")
+    katcp_port = args.get("katcp_host_port")
 
     sensor_poll = SensorPoll(katcp_ip, katcp_port)
     main_logger = LoggingClass()
