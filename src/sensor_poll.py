@@ -14,6 +14,7 @@ import ipaddress
 import socket
 import sys
 import time
+import threading
 
 from collections import OrderedDict
 from itertools import izip_longest
@@ -81,6 +82,7 @@ class SensorPoll(LoggingClass):
         katcp_port: int
             Port to connect to! [Defaults: 7147]
         """
+
         try:
             self.katcp_ip = katcp_ip
             ipaddress.ip_address(u"{}".format(self.katcp_ip))
