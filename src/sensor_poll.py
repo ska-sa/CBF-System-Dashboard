@@ -3,23 +3,24 @@
 import argcomplete
 import argparse
 import atexit
-import coloredlogs
-import functools
 import gc
 import json
+import functools
+import time
 import katcp
-import logging
 import os
 import ipaddress
 import socket
 import sys
-import time
 import threading
 
 from collections import OrderedDict
 from itertools import izip_longest
 from ast import literal_eval as evaluate
 from pprint import PrettyPrinter
+
+from utils import combined_Dict_List
+from utils import LoggingClass
 
 
 def retry(func, count=20, wait_time=300):
@@ -37,39 +38,6 @@ def retry(func, count=20, wait_time=300):
                 break
         raise retExc
     return wrapper
-
-
-def combined_Dict_List(*args):
-    """
-    Combining two/more dictionaries into one with the same keys
-
-    Params
-    =======
-    args: list
-        list of dicts to combine
-
-    Return
-    =======
-    result: dict
-        combined dictionaries
-    """
-    result = {}
-    for _dict in args:
-        for key in result.viewkeys() | _dict.keys():
-            if key in _dict:
-                result.setdefault(key, []).extend([_dict[key]])
-    return result
-
-
-# This class could be imported from a utility module
-class LoggingClass(object):
-    @property
-    def logger(self):
-        log_format = "%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(pathname)s : %(lineno)d - %(message)s"
-        name = ".".join([os.path.basename(sys.argv[0]), self.__class__.__name__])
-        logging.basicConfig(format=log_format)
-        coloredlogs.install(fmt=log_format)
-        return logging.getLogger(name)
 
 
 class SensorPoll(LoggingClass):
@@ -94,6 +62,8 @@ class SensorPoll(LoggingClass):
 
     @retry
     def _kcp_connect(self):
+        """
+        """
         try:
             self._started = False
             self.primary_client = self.katcp_request(which_port=self.katcp_port)
@@ -101,70 +71,83 @@ class SensorPoll(LoggingClass):
             assert isinstance(self.primary_client, katcp.client.BlockingClient)
             reply, informs = self.sensor_request(self.primary_client)
             assert reply.reply_ok()
-            if len(informs) > 1:
-                dict_informs = {}
+            self._prim_clnt_informs = {}
+            if len(informs) > 10:
+            # Revert back this hotfix
+            # if len(informs) > 1:
                 for inform in informs:
                     try:
-                        dict_informs[inform.arguments[0]] = [
-                            int(x) for x in array.arguments[1].split(',')
-                            ]
+                        array_port, sensor_port = [int(x) for x in inform.arguments[1].split(',')]
+                        self._prim_clnt_informs[inform.arguments[0]] = {
+                            "array_port": array_port,
+                            "sensor_port": sensor_port,
+                            }
                     except Exception:
                         self.logger.exception("Failed to create informs dictionary.")
-
             else:
-                katcp_array_list = informs[0].arguments
-                assert isinstance(katcp_array_list, list)
-                self.katcp_array_port, self.katcp_sensor_port = [
-                    int(i) for i in katcp_array_list[1].split(",")]
-                self.array_name = katcp_array_list[0]
-                assert isinstance(self.katcp_array_port, int)
-                assert isinstance(self.katcp_sensor_port, int)
+                informs = informs[0].arguments
+                array_port, sensor_port = [int(x) for x in informs[1].split(',')]
+                self._prim_clnt_informs[informs[0]] = {
+                            "array_port": array_port,
+                            "sensor_port": sensor_port,
+                            }
+                if self._started:
+                    self._started = False
+                    sec_client = self.katcp_request(array_port)
+                    atexit.register(self.cleanup, sec_client)
+                    self.logger.info(
+                        "Katcp connection established: IP %s, Primary Port: %s, Array Port: %s, "
+                        "Sensor Port: %s" % (self.katcp_ip, self.katcp_port, array_port,
+                            sensor_port))
+                if self._started:
+                    self._started = False
+                    sec_sensors_katcp_con = self.katcp_request(which_port=sensor_port)
+                    atexit.register(self.cleanup, sec_sensors_katcp_con)
+                    time.sleep(0.1)
+                    inputmapping = evaluate(self.get_inputlabel(sec_client)[-1][-1])
+                    hostmapping = evaluate(self.get_hostmapping(sec_sensors_katcp_con)[-1][-1])
+                    try:
+                        self.input_mapping, self.hostname_mapping = self.do_mapping(inputmapping,
+                            hostmapping)
+                    except Exception:
+                        self.cleanup(sec_client)
+                        self.cleanup(sec_sensors_katcp_con)
+                        self.logger.error("Ayeyeyeye! it broke cannot do mappings",)
+                        raise
 
         except Exception:
-            self.logger.error(
-                "No running array on {}:{}!!!!".format(self.katcp_ip, self.katcp_port),
-                #exc_info=True
-            )
+            self.logger.exception(
+                "No running array on {}:{}!!!!".format(self.katcp_ip, self.katcp_port))
             if self.primary_client.is_connected():
                 self.cleanup(self.primary_client)
             raise
-        else:
-            if self._started:
-                self._started = False
-                self.sec_client = self.katcp_request(which_port=self.katcp_array_port)
-                atexit.register(self.cleanup, self.sec_client)
+        # else:
+        #     if self._started:
+        #         self._started = False
+        #         self.sec_client = self.katcp_request(which_port=self.katcp_array_port)
 
-            if self._started:
-                self._started = False
-                self.sec_sensors_katcp_con = self.katcp_request(
-                    which_port=self.katcp_sensor_port
-                )
-                atexit.register(self.cleanup, self.sec_sensors_katcp_con)
+        #     if self._started:
+        #         self._started = False
+        #         self.sec_sensors_katcp_con = self.katcp_request(which_port=self.katcp_sensor_port)
+        #         atexit.register(self.cleanup, self.sec_sensors_katcp_con)
 
-            self.logger.info(
-                "Katcp connection established: IP {}, Primary Port: {}, Array Port: {}, "
-                "Sensor Port: {}".format(
-                    self.katcp_ip,
-                    self.katcp_port,
-                    self.katcp_array_port,
-                    self.katcp_sensor_port,
-                )
-            )
-            time.sleep(1)
-            try:
-                self.input_mapping, self.hostname_mapping = self.do_mapping()
-            except Exception:
-                self.cleanup(self.sec_client)
-                self.cleanup(self.sec_sensors_katcp_con)
-                self.logger.error(
-                    "Ayeyeyeye! it broke cannot do mappings",
-                             # exc_info=True
-                    )
-                raise
+        #     self.logger.info(
+        #         "Katcp connection established: IP {}, Primary Port: {}, Array Port: {}, "
+        #         "Sensor Port: {}".format(self.katcp_ip, self.katcp_port, self.katcp_array_port,
+        #             self.katcp_sensor_port,))
+        #     time.sleep(0.1)
+        #     try:
+        #         self.input_mapping, self.hostname_mapping = self.do_mapping()
+        #     except Exception:
+        #         self.cleanup(self.sec_client)
+        #         self.cleanup(self.sec_sensors_katcp_con)
+        #         self.logger.error(
+        #             "Ayeyeyeye! it broke cannot do mappings",
+        #                      # exc_info=True
+        #             )
+        #         raise
 
-    def katcp_request(
-        self, which_port, katcprequest="array-list", katcprequestArg=None, timeout=10
-    ):
+    def katcp_request(self, which_port, katcprequest="array-list", katcprequestArg=None, timeout=10):
         """
         Katcp requests
 
@@ -187,28 +170,23 @@ class SensorPoll(LoggingClass):
         # self._started = False
         if not self._started:
             self._started = True
-            self.logger.info("Establishing katcp connection on {}:{}".format(
-                self.katcp_ip, which_port))
+            self.logger.info("Establishing katcp connection on {}:{}".format(self.katcp_ip,
+                which_port))
             client = katcp.BlockingClient(self.katcp_ip, which_port)
             client.setDaemon(True)
             client.start()
-            time.sleep(0.1)
+            time.sleep(0.2)
             try:
                 is_connected = client.wait_running(timeout)
                 assert is_connected
-                self.logger.info(
-                    "Katcp client connected to {}:{}\n".format(
-                        self.katcp_ip, which_port
-                    )
-                )
+                self.logger.info("Katcp client connected to {}:{}\n".format(self.katcp_ip,
+                    which_port))
                 return client
             except Exception:
                 client.stop()
                 self.logger.error("Could not connect to katcp, timed out.")
 
-    def sensor_request(
-        self, client, katcprequest="array-list", katcprequestArg=None, timeout=10
-    ):
+    def sensor_request(self, client, katcprequest="array-list", katcprequestArg=None, timeout=10):
         """
         Katcp requests
 
@@ -254,58 +232,43 @@ class SensorPoll(LoggingClass):
             if client.is_connected():
                 self.logger.error("Did not clean up client properly, %s" % client.bind_address)
 
-
-    @property
-    def get_sensor_values(self):
+    ################################################################################################
+    def get_sensor_values(self, sensor_katcp_client):
         try:
-            assert self.katcp_sensor_port
-            reply, informs = self.sensor_request(
-                self.sec_sensors_katcp_con, katcprequest="sensor-value")
+            reply, informs = self.sensor_request(sensor_katcp_client, katcprequest="sensor-value")
             assert reply.reply_ok()
             assert int(reply.arguments[-1])
-            yield [inform.arguments for inform in informs]
+            return [inform.arguments for inform in informs]
         except AssertionError:
             self.logger.error("No Sensors!!! Exiting!!!")
             raise
 
-    @property
-    def get_hostmapping(self):
+    def get_hostmapping(self, sensor_katcp_client):
         try:
-            assert self.katcp_sensor_port
-            reply, informs = self.sensor_request(
-                self.sec_sensors_katcp_con,
-                katcprequest="sensor-value",
-                katcprequestArg="hostname-functional-mapping",
-            )
+            reply, informs = self.sensor_request(sensor_katcp_client, katcprequest="sensor-value",
+                katcprequestArg="hostname-functional-mapping",)
             assert reply.reply_ok()
             assert int(reply.arguments[-1])
-            yield [inform.arguments for inform in informs]
+            return [inform.arguments for inform in informs]
         except AssertionError:
-            self.cleanup(self.sec_sensors_katcp_con)
+            self.cleanup(sensor_katcp_client)
             self.logger.error("No Sensors!!! Exiting!!!")
             raise
 
-    @property
-    def get_inputlabel(self, i=1):
+    def get_inputlabel(self, sensor_katcp_client):
         try:
-            assert self.katcp_array_port
-            for i in xrange(i):
-                reply, informs = self.sensor_request(
-                    self.sec_client,
-                    katcprequest="sensor-value",
-                    katcprequestArg="input-labelling",
-                )
-                assert reply.reply_ok()
+            reply, informs = self.sensor_request(sensor_katcp_client, katcprequest="sensor-value",
+                katcprequestArg="input-labelling",)
+            assert reply.reply_ok()
             assert int(reply.arguments[-1])
-            yield [inform.arguments for inform in informs]
+            return [inform.arguments for inform in informs]
         except AssertionError:
-            self.cleanup(self.sec_client)
+            self.cleanup(sensor_katcp_client)
             self.logger.error("No Sensors!!! Exiting!!!")
             raise
 
-    @property
     def get_sensor_dict(self):
-        sensor_value_informs = next(self.get_sensor_values)
+        sensor_value_informs = self.get_sensor_values(sensor_katcp_client)
         self.logger.debug("Converting sensor list to dict!!!")
         # sensors name + status + value
         self.original_sensors = dict(
@@ -321,38 +284,31 @@ class SensorPoll(LoggingClass):
         except Exception as exc:
             raise exc
 
-    def do_mapping(self):
-        try:
-            self.logger.debug("Mapping input labels and hostnames")
-            hostname_mapping = next(self.get_hostmapping)[-1][-1]
-            input_mapping = next(self.get_inputlabel)[-1][-1]
-        except Exception:
-            self.logger.error(
-                "Serious error occurred, cannot continue!!! Missing sensors"
-            )
-            raise
-        else:
-            input_mapping = dict(list(i)[0:3:2] for i in evaluate(input_mapping))
-            input_mapping = dict((v, k) for k, v in input_mapping.iteritems())
-            update_maps = []
-            for i in input_mapping.values():
-                if "_y" in i:
-                    i = i.replace("_y", "_xy")
-                elif "_x" in i:
-                    i = i.replace("_x", "_xy")
-                elif "v" in i:
-                    i = i.replace("v", "_vh")
-                elif "h" in i:
-                    i = i.replace("h", "_vh")
+    ################################################################################################
 
-                update_maps.append(i)
+    def do_mapping(self, input_mapping, hostname_mapping):
+        self.logger.debug("Mapping input labels and host names")
+        input_mapping = dict(list(i)[0:3:2] for i in input_mapping)
+        input_mapping = dict((v, k) for k, v in input_mapping.iteritems())
+        update_maps = []
+        for i in input_mapping.values():
+            if "_y" in i:
+                i = i.replace("_y", "_xy")
+            elif "_x" in i:
+                i = i.replace("_x", "_xy")
+            elif "v" in i:
+                i = i.replace("v", "_vh")
+            elif "h" in i:
+                i = i.replace("h", "_vh")
 
-            update_maps = sorted(update_maps)
-            input_mapping = dict(zip(sorted(input_mapping.keys()), update_maps))
-            hostname_mapping = dict(
-                (v, k) for k, v in evaluate(hostname_mapping).iteritems()
-            )
-            return [input_mapping, hostname_mapping]
+            update_maps.append(i)
+
+        update_maps = sorted(update_maps)
+        input_mapping = dict(zip(sorted(input_mapping.keys()), update_maps))
+        hostname_mapping = dict(
+            (v, k) for k, v in hostname_mapping.iteritems()
+        )
+        return [input_mapping, hostname_mapping]
 
     def get_list_index(self, String, List):
         """
@@ -626,6 +582,8 @@ class SensorPoll(LoggingClass):
 
 
 if __name__ == "__main__":
+    import logging
+    import coloredlogs
     parser = argparse.ArgumentParser(description="Receive data from a CBF and play.")
     parser.add_argument(
         "--katcp",
