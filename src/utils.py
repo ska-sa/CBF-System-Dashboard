@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 
 import coloredlogs
-import functools
 import logging
-import time
 import os
 import sys
-
 
 
 def combined_Dict_List(*args):

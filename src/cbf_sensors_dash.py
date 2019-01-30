@@ -366,7 +366,7 @@ def display_page(pathname):
             _sensors = json.dumps(
                 OrderedDict(ordered_sensor_dict), indent=4, sort_keys=True, separators=(",", ": ")
             )
-        except:
+        except Exception:
             _sensors = json.dumps(
                 OrderedDict(sensor_format), indent=4, sort_keys=True, separators=(",", ": ")
             )

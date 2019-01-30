@@ -3,7 +3,6 @@
 import argcomplete
 import argparse
 import atexit
-import gc
 import json
 import functools
 import time
@@ -11,8 +10,6 @@ import katcp
 import os
 import ipaddress
 import socket
-import sys
-import threading
 
 from collections import OrderedDict
 from itertools import izip_longest
