@@ -39,7 +39,7 @@ def combined_Dict_List(*args):
     return result
 
 
-def merged_sensors_dict(dict1, dict2):
+def merge_dicts(dict1, dict2):
     """
     Merge 2(Two) dictionaries into One
     """
