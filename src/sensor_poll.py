@@ -72,11 +72,9 @@ class SensorPoll(LoggingClass):
             reply, informs = self.sensor_request(self.primary_client)
             assert reply.reply_ok()
             _prim_clnt_informs = {}
-            # Revert back this hotfix
-            # if len(informs) > 1:
             for inform in informs:
                 try:
-                    array_port, sensor_port = [int(x) for x in inform.arguments[1].split(',')]
+                    array_port, sensor_port = inform.arguments[1].split(',')
                     _prim_clnt_informs[inform.arguments[0]] = [{
                         "array_port": array_port,
                         "sensor_port": sensor_port,
@@ -84,52 +82,74 @@ class SensorPoll(LoggingClass):
                 except Exception:
                     self.logger.exception("Failed to create informs dictionary.")
 
+
             sec_client_dict = {}
-            for keys, values in _prim_clnt_informs.iteritems():
+            if self._started:
+                self._started = False
+            _input_mapping = {}
+            for _array, values in _prim_clnt_informs.iteritems():
                 for _key, _value in values[0].iteritems():
-                    if _key == 'array_port' and self._started:
-                        self._started = False
-                        sec_client_dict[keys] = [{
-                            "{}.secondary_client".format(keys): self.katcp_request(_value)
+                    if _key == 'array_port':
+                        _client_connect = self.katcp_request(_value)
+                        assert _client_connect
+                        _input_mapping[_array] = [{
+                            "{}.input_mapping".format(_array):evaluate(
+                                self.get_inputlabel(_client_connect)[-1][-1])
+                            }]
+
+                        sec_client_dict[_array] = [{
+                                "{}.secondary_client".format(_array): _client_connect
                             }]
 
             # perhaps a better var name
             new_client_informs = merge_dicts(_prim_clnt_informs, sec_client_dict)
+
+            # Cleanup
             for _array, value in new_client_informs.iteritems():
                 for sec_client in value:
                     if 'secondary_client' in sec_client.keys()[0]:
                         atexit.register(self.cleanup, sec_client.values()[0])
 
             sec_sensors_client_dict = {}
-            for keys, values in _prim_clnt_informs.iteritems():
+            _hostname_mapping = {}
+            if self._started:
+                self._started = False
+            for _array, values in _prim_clnt_informs.iteritems():
                 for _key, _value in values[0].iteritems():
-                    if _key == 'sensor_port' and self._started:
-                        self._started = False
-                        sec_sensors_client_dict[keys] = [{
-                                "{}.secondary_sensors_client".format(keys): self.katcp_request(_value)
+                    if _key == 'sensor_port':
+                        _client_connect = self.katcp_request(_value)
+                        assert _client_connect.running()
+                        _hostname_mapping[_array] = [{
+                            "{}.hostname_mapping".format(_array): evaluate(
+                                self.get_hostmapping(_client_connect)[-1][-1])
+                            }]
+                        sec_sensors_client_dict[_array] = [{
+                                "{}.secondary_sensors_client".format(_array): _client_connect
                             }]
 
-
             new_client_informs = merge_dicts(_prim_clnt_informs, sec_sensors_client_dict)
-
-            # perhaps a better var name
-            new_client_informs = merge_dicts(_prim_clnt_informs, sec_client_dict)
+            # Cleanup
             for _array, value in new_client_informs.iteritems():
                 for sec_sens_client in value:
                     if 'secondary_sensors_client' in sec_sens_client.keys()[0]:
                         atexit.register(self.cleanup, sec_sens_client.values()[0])
 
 
-            # {
-            #     "{}.host_mapping".format(keys): evaluate(
-            #         self.get_hostmapping(_value)[-1][-1])
-            # }
+
+            if self._started:
+                self._started = False
+            # if len(_prim_clnt_informs) == 1:
+            #     pass
+            # else:
+            #     new_mapping = {"{}.host_mapping".format(keys): evaluate(
+            #                             self.get_hostmapping(_value)[-1][-1])
+            #                     }
+
             #  ,
             # {
             # "{}.input_mapping".format(keys): evaluate(
             #     self.get_inputlabel(_value)[-1][-1])
             # }
-            import IPython; globals().update(locals()); IPython.embed(header='get sensors')
 
             # else:
             #     informs = informs[0].arguments
