@@ -50,6 +50,11 @@ def merge_dicts(dict1, dict2):
     # merged_sensors.update(x_sensors)
     # return merged_sensors
 
+def swap_dict(_dict):
+    """
+    Swap keys and values of a dictionary
+    """
+    return dict((v, k) for k, v in _dict.iteritems())
 
 def get_list_index(String, List):
         """
