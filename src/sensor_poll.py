@@ -90,8 +90,10 @@ class SensorPoll(LoggingClass):
             for _array, values in _prim_clnt_informs.iteritems():
                 for _key, _value in values[0].iteritems():
                     if _key == 'array_port':
+                        if self._started:
+                            self._started = False
                         _client_connect = self.katcp_request(_value)
-                        assert _client_connect
+                        assert _client_connect.running()
                         _input_mapping[_array] = [{
                             "{}.input_mapping".format(_array):evaluate(
                                 self.get_inputlabel(_client_connect)[-1][-1])
@@ -117,6 +119,8 @@ class SensorPoll(LoggingClass):
             for _array, values in _prim_clnt_informs.iteritems():
                 for _key, _value in values[0].iteritems():
                     if _key == 'sensor_port':
+                        if self._started:
+                            self._started = False
                         _client_connect = self.katcp_request(_value)
                         assert _client_connect.running()
                         _hostname_mapping[_array] = [{
