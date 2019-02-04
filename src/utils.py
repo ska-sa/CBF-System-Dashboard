@@ -56,6 +56,12 @@ def swap_dict(_dict):
     """
     return dict((v, k) for k, v in _dict.iteritems())
 
+def join_dict(_dict):
+    """
+    Join a list of dictionaries into a single dictionary
+    """
+    return dict(i.items()[0] for i in _dict)
+
 def get_list_index(String, List):
         """
         Find the index of a string in a list
