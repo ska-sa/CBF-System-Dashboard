@@ -270,10 +270,22 @@ class SensorPoll(LoggingClass):
             self.logger.error("No Sensors!!! Exiting!!!")
             raise
 
+
     def get_sensor_dict(self, _host):
         """
 
         """
+
+        def get_input_label_mapping(shost):
+            """
+            Get input label mapping for fhosts
+            """
+            for input_maps in self._input_mapping.values():
+                for input_map in input_maps:
+                    for val in input_map.values():
+                        if host.startswith('fhost') and val.get(mapping[host]):
+                            return [val.get(mapping[host]), "inputlabel"]
+
         sensor_clients = join_dict(
             [value for key, values in self._prim_clnt_informs.iteritems()
                 for value in values if "{}.secondary_sensors_client".format(key) in value])
@@ -293,11 +305,11 @@ class SensorPoll(LoggingClass):
                 self.logger.exception("Failed to get sensors from katcp")
                 raise exc
             else:
-                for key, value in ordered_sensor_dict.iteritems():
+                for key, values in ordered_sensor_dict.iteritems():
                     key_s = key.split(".")
                     host = key_s[0].lower()
                     if host.startswith(_host) and ("device-status" in key_s):
-                        new_value = [x.replace("device-status", value) for x in key_s[1:]]
+                        new_value = [x.replace("device-status", values) for x in key_s[1:]]
                         if "network-reorder" in new_value:
                             # rename such that, it fits on a 1920x1080 html page as a button
                             _indices = new_value.index("network-reorder")
@@ -321,11 +333,23 @@ class SensorPoll(LoggingClass):
 
                 new_mapping = combined_Dict_List(*mapping)
 
+
         for host, _list in new_mapping.iteritems():
-            if host in hostname_mapping:
-                new_hostname = host.replace(_host, "") + \
-                hostname_mapping[host].replace("skarab", "-").replace("-01", "")
-            _ = [value.insert(0, new_hostname) for value in _list if len(value) == 1]
+            _array, host = host.split(".")
+            for key, value in self._hostname_mapping.iteritems():
+                if key == _array:
+                    for val in value:
+                        for _, mapping in val.iteritems():
+                            if host in mapping.keys():
+                                new_hostname = (host.replace(_host, "") + mapping[host].replace(
+                                    "skarab", "-").replace("-01", ""))
+                            for value in _list:
+                                if len(value) == 1:
+                                    value.insert(0, new_hostname)
+
+        for array_host, _ in new_mapping.iteritems():
+            host = array_host.split('.')[-1]
+            new_mapping[array_host].insert(2, get_input_label_mapping(host))
 
         try:
             assert isinstance(new_mapping, dict)
@@ -391,7 +415,7 @@ class SensorPoll(LoggingClass):
             "vacc",
             "spead-tx",
         ]
-        new_mapping = self.get_sensor_dict(sec_sensors_katcp_con, self.hostname_mapping, "xhost")
+        new_mapping = self.get_sensor_dict("xhost")
         new_dict_mapping = {}
         for keys, values in new_mapping.iteritems():
             keys_ = keys[1:]
@@ -455,28 +479,17 @@ class SensorPoll(LoggingClass):
             "ct",
             "spead-tx",
         ]
-        try:
-            new_mapping = self.get_sensor_dict("fhost")
-            assert isinstance(new_mapping, dict)
-        except Exception:
-            self.logger.error("Failed to map fhosts", exc_info=True)
-        else:
-            for host, values in new_mapping.iteritems():
-                if host in self.hostname_mapping:
-                    values.insert(2, [self.input_mapping[self.hostname_mapping[host]], "inputlabel"])
-                    # values.append(['->XEngine', 'xhost'])
+        new_mapping = self.get_sensor_dict("fhost")
+        new_dict_mapping = {}
+        for host, values in new_mapping.iteritems():
+            host_ = host[1:]
+            new_dict_mapping[host_] = values
+        # Update mappings
+        for _, listA in new_dict_mapping.iteritems():
+            for _index, _sig in enumerate(fhost_sig_chain):
+                listA.insert(_index, listA.pop(get_list_index(_sig, listA)))
 
-            new_dict_mapping = {}
-            for host, values in new_mapping.iteritems():
-                host_ = host[1:]
-                new_dict_mapping[host_] = values
-            # Update mappings
-            _ = [listA.insert(_index, listA.pop(get_list_index(_sig, listA)))
-                    for _, listA in new_dict_mapping.iteritems()
-                        for _index, _sig in enumerate(fhost_sig_chain)
-                ]
-
-            return new_dict_mapping
+        return new_dict_mapping
 
     @property
     def get_original_mapped_sensors(self):

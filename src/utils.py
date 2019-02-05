@@ -46,21 +46,23 @@ def merge_dicts(dict1, dict2):
     for key, value in dict2.iteritems():
         dict1.setdefault(key, []).extend(value)
     return dict1
-    # merged_sensors = f_sensors.copy()
-    # merged_sensors.update(x_sensors)
-    # return merged_sensors
+
 
 def swap_dict(_dict):
     """
     Swap keys and values of a dictionary
+    eg: {key: value} -> {value: key}
     """
     return dict((v, k) for k, v in _dict.iteritems())
+
 
 def join_dict(_dict):
     """
     Join a list of dictionaries into a single dictionary
+    eg: [dict1, dict2, dict3] -> dict1
     """
     return dict(i.items()[0] for i in _dict)
+
 
 def get_list_index(String, List):
         """
