@@ -391,29 +391,17 @@ class SensorPoll(LoggingClass):
 
     def map_xhost_sensors(self):
         """
-        Needs to be in this format:
-            'host03': [
-                    ['03-020308', 'warn'],
-                    ['network', 'warn'],
-                    ['spead-rx', 'nominal'],
-                    ['Net-ReOrd', 'nominal'],
-                    ['hmcReOrd', 'warn'],
-                    ['bram-reorder', 'error'],
-                    ['vacc', 'error'],
-                    ['spead-tx', 'nominal']
-                ]
-            }
 
         """
         xhost_sig_chain = [
-            "-02",
-            "network",
-            "spead-rx",
-            "Net-ReOrd",
-            "hmcReOrd",
-            "bramReOrd",
-            "vacc",
-            "spead-tx",
+            "-02",          # LRU
+            "network",      # Network TRx
+            "spead-rx",     # Spead Rx
+            "Net-ReOrd",    # Network re-order
+            "hmcReOrd",     # HMC re-order
+            "bramReOrd",    # BRam re-order
+            "vacc",         # VACC statis
+            "spead-tx",     # Spead Tx -> to SDP
         ]
         new_mapping = self.get_sensor_dict("xhost")
         new_dict_mapping = {}
@@ -445,21 +433,6 @@ class SensorPoll(LoggingClass):
     @property
     def map_fhost_sensors(self):
         """
-        {
-             'fhost03': [
-                            ['SKA-020709', 'warn'],
-                            ['fhost00', 'skarab020709-01'],
-                            ['ant0_y', 'inputlabel'],
-                            ['network', 'nominal'],
-                            ['spead-rx', 'failure'],
-                            ['Net-ReOrd', 'nominal'],
-                            ['cd', 'warn'],
-                            ['pfb', 'warn'],
-                            ['ct', 'nominal'],
-                            ['spead-tx', 'nominal'],
-                            ['->XEngine', 'xhost']
-                        ]
-        }
 
         """
 
@@ -469,27 +442,23 @@ class SensorPoll(LoggingClass):
         # issue reading cmc3 input labels
         # fhost_sig_chain = ['SKA', 'fhost', 'network', 'spead-rx', 'Net-ReOrd', 'cd', 'pfb',
         fhost_sig_chain = [
-            "-02",
-            "input",
-            "network",
-            "spead-rx",
-            "Net-ReOrd",
-            "cd",
-            "pfb",
-            "ct",
-            "spead-tx",
+            "-02",         # LRU
+            "input",       # Input Label
+            "network",     # Network TRx
+            "spead-rx",    # Spead Rx
+            "Net-ReOrd",   # Network Reorder
+            "cd",          # Course Delay
+            "pfb",         # PFB
+            "ct",          # Corner Turn
+            "spead-tx",    # Spead Tx
         ]
+
         new_mapping = self.get_sensor_dict("fhost")
-        new_dict_mapping = {}
-        for host, values in new_mapping.iteritems():
-            host_ = host[1:]
-            new_dict_mapping[host_] = values
-        # Update mappings
-        for _, listA in new_dict_mapping.iteritems():
+        for _, listA in new_mapping.iteritems():
             for _index, _sig in enumerate(fhost_sig_chain):
                 listA.insert(_index, listA.pop(get_list_index(_sig, listA)))
 
-        return new_dict_mapping
+        return new_mapping
 
     @property
     def get_original_mapped_sensors(self):
