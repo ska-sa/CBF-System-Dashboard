@@ -5,6 +5,9 @@
 
 Simplified Docker based, CBF Sensor dashboard which polls the CBF sensors every x seconds and uses [Dash](https://plot.ly/dash) for its front-end.
 
+![cbfdash](dashboard.png)
+
+
 ## What is Dash
 
 **Dash is a Python framework for building analytical web applications. No JavaScript/HTML required.**
