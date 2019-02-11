@@ -1,10 +1,11 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
 
 import coloredlogs
 import logging
 import os
 import sys
-
 
 # This class could be imported from a utility module
 class LoggingClass(object):
