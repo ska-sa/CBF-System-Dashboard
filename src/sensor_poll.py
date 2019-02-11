@@ -270,7 +270,6 @@ class SensorPoll(LoggingClass):
             self.logger.error("No Sensors!!! Exiting!!!")
             raise
 
-
     def get_sensor_dict(self, _host):
         """
 
@@ -349,7 +348,8 @@ class SensorPoll(LoggingClass):
 
         for array_host, _ in new_mapping.iteritems():
             host = array_host.split('.')[-1]
-            new_mapping[array_host].insert(2, get_input_label_mapping(host))
+            if host.startswith("fhost"):
+                new_mapping[array_host].insert(2, get_input_label_mapping(host))
 
         try:
             assert isinstance(new_mapping, dict)
@@ -359,10 +359,10 @@ class SensorPoll(LoggingClass):
             raise
 
     ################################################################################################
-
+    @property
     def map_xhost_sensors(self):
         """
-
+        Get xhost sensors and map them accordingly.
         """
         xhost_sig_chain = [
             "-02",          # LRU
@@ -374,44 +374,43 @@ class SensorPoll(LoggingClass):
             "vacc",         # VACC statis
             "spead-tx",     # Spead Tx -> to SDP
         ]
+
         new_mapping = self.get_sensor_dict("xhost")
         new_dict_mapping = {}
         for keys, values in new_mapping.iteritems():
-            keys_ = keys[1:]
-            new_dict_mapping[keys_] = []
+            new_dict_mapping[keys] = []
             for value in values:
                 if (len(value) <= 2) and (not value[0].startswith("xeng")):
-                    new_dict_mapping[keys_].append(value)
+                    new_dict_mapping[keys].append(value)
+
                 if (value[0].startswith("xeng") and value not in new_dict_mapping.values()):
                     if "vacc" in value:
-                        new_dict_mapping[keys_].append(value[1:])
+                        new_dict_mapping[keys].append(value[1:])
                     if "spead-tx" in value:
-                        new_dict_mapping[keys_].append(value[1:])
+                        new_dict_mapping[keys].append(value[1:])
                     if "bramReOrd" in value:
-                        new_dict_mapping[keys_].append(value[1:])
+                        new_dict_mapping[keys].append(value[1:])
 
-        # _ = [listA.insert(_index, listA.pop(get_list_index(_sig, listA)))
-        #      for _, listA in new_dict_mapping.iteritems() for _index, _sig in enumerate(xhost_sig_chain)]
-        # return new_dict_mapping
         fixed_dict_mapping = {}
         for host_, listA in new_dict_mapping.iteritems():
             listA = listA[: len(xhost_sig_chain)]
             for _index, _sig in enumerate(xhost_sig_chain):
                 listA.insert(_index, listA.pop(get_list_index(_sig, listA)))
             fixed_dict_mapping[host_] = listA
+
         return fixed_dict_mapping
 
     @property
     def map_fhost_sensors(self):
         """
-
-        """
-
+        Get fhost sensors and map them accordingly.
         # Abbreviated signal chain
         # F_LRU -> Host -> input_label -> network-trx -> spead-rx -> network-reorder -> cd -> pfb -->>
         #    -->> ct -> spead-tx -> network-trx : [To Xengine ]
         # issue reading cmc3 input labels
         # fhost_sig_chain = ['SKA', 'fhost', 'network', 'spead-rx', 'Net-ReOrd', 'cd', 'pfb',
+        """
+
         fhost_sig_chain = [
             "-02",         # LRU
             "input",       # Input Label
@@ -431,25 +430,13 @@ class SensorPoll(LoggingClass):
 
         return new_mapping
 
-    @property
-    def get_original_mapped_sensors(self):
-        mapping = []
-        for key, value in self.original_sensors.iteritems():
-            host = key.split(".")[0].lower()
-            if host[1:].startswith("host"):
-                if value[0] != "nominal":
-                    value.insert(0, key)
-                    new_dict = dict(izip_longest(*[iter([host, value])] * 2, fillvalue=""))
-                    mapping.append(new_dict)
-
-        new_mapping = combined_Dict_List(*mapping)
-        return new_mapping
-
     def create_dumps_dir(self):
         """
         Create json dumps directory
         """
         # Conflicted: To store in /tmp or not to store in , that is the question
+
+        # TODO: Update to pathlib [https://docs.python.org/3/library/pathlib.html]
         try:
             _dir, _name = os.path.split(os.path.dirname(os.path.realpath(__file__)))
         except Exception:
@@ -460,6 +447,9 @@ class SensorPoll(LoggingClass):
             os.makedirs(path)
 
     def generate_sensors_to_file(self):
+        """
+        Self explanatory, merge fhost and xhost sensors and write to file.
+        """
         try:
             sensors = merge_dicts(self.map_fhost_sensors, self.map_xhost_sensors)
         except Exception:
@@ -472,21 +462,14 @@ class SensorPoll(LoggingClass):
             except Exception:
                 cur_path = os.path.split(os.path.dirname(os.path.abspath(__name__)))[0]
             else:
-                _filename = "{}/json_dumps/{}.{}.sensor_values.json".format(
-                    cur_path, self.hostname, self.array_name)
-                _sensor_filename = "{}/json_dumps/{}.{}.ordered_sensor_values.json".format(
-                    cur_path, self.hostname, self.array_name)
-                self.logger.info("Updating file: %s" % _filename)
-                with open(_filename, "w") as outfile:
-                    json.dump(sensors, outfile, indent=4, sort_keys=True)
-                with open(_sensor_filename, "w") as outfile:
-                    json.dump(
-                        self.get_original_mapped_sensors,
-                        outfile,
-                        indent=4,
-                        sort_keys=True,
-                    )
-                self.logger.info("Updated: %s" % _filename)
+                for array_name in self._prim_clnt_informs.keys():
+                    _filename = "{}/json_dumps/{}.{}.sensor_values.json".format(
+                        cur_path, self.hostname, array_name)
+                    self.logger.info("Updating file: %s" % _filename)
+
+                    with open(_filename, "w") as outfile:
+                        json.dump(sensors, outfile, indent=4, sort_keys=True)
+                    self.logger.info("Updated: %s" % _filename)
 
 
 if __name__ == "__main__":
