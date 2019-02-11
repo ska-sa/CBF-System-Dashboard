@@ -7,13 +7,14 @@ LABEL maintainer="Mpho Mphego <mmphego@ska.ac.za>"
 ENV DEBIAN_FRONTEND noninteractive
 WORKDIR /usr/src/apps
 # Install Python dependencies
-RUN pip install --no-cache-dir -U argcomplete \
-                   coloredlogs \
-                   dash-core-components \
-                   dash-html-components \
-                   dash-renderer \
-                   dash \
-                   plotly
+RUN pip install --no-cache-dir -U \
+                argcomplete \
+                coloredlogs \
+                context.api \
+                dash==0.21.0 \
+                dash-core-components==0.22.1 \
+                dash-html-components==0.10.0  \
+                dash-renderer==0.12.1
 
 # User data directory, containing Python scripts, config and etc.
 COPY src/Config.py /usr/src/apps/

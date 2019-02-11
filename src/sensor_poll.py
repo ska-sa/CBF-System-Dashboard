@@ -1,29 +1,23 @@
 #!/usr/bin/env python
 
-import argcomplete
 import argparse
 import atexit
-import json
 import functools
-import time
-import katcp
-import os
 import ipaddress
+import json
+import os
 import socket
-
+import time
+from ast import literal_eval as evaluate
 from collections import OrderedDict
 from itertools import izip_longest
-from ast import literal_eval as evaluate
 from pprint import PrettyPrinter
 
-from utils import (
-    LoggingClass,
-    combined_Dict_List,
-    merge_dicts,
-    get_list_index,
-    swap_dict,
-    join_dict
-    )
+import argcomplete
+import katcp
+
+from utils import (LoggingClass, combined_Dict_List, get_list_index, join_dict,
+                   merge_dicts, swap_dict)
 
 
 def retry(func, count=20, wait_time=300):
