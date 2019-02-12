@@ -2,6 +2,7 @@
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/087b7fe788d4415c8369dc0e365dff4c)](https://app.codacy.com/app/mmphego/CBF-System-Dashboard?utm_source=github.com&utm_medium=referral&utm_content=ska-sa/CBF-System-Dashboard&utm_campaign=Badge_Grade_Settings)
 [![Build Status](https://travis-ci.org/ska-sa/CBF-System-Dashboard.svg?branch=master)](https://travis-ci.org/ska-sa/CBF-System-Dashboard)
+[![LICENSE](https://img.shields.io/github/license/ska-sa/cbf-system-dashboard.svg?style=flat)](LICENSE)
 
 Simplified Docker based, CBF Sensor dashboard which polls the CBF sensors every x seconds and uses [Dash](https://plot.ly/dash) for its front-end.
 
