@@ -73,7 +73,7 @@ class LoggingClass(object):
 
 
 class SensorPoll(LoggingClass):
-    def __init__(self, katcp_ip=None, katcp_port=7147):
+    def __init__(self, katcp_ip, katcp_port=7147):
         """
         Parameters
         =========
@@ -82,15 +82,18 @@ class SensorPoll(LoggingClass):
         katcp_port: int
             Port to connect to! [Defaults: 7147]
         """
-
         try:
-            assert katcp_ip
-            self.katcp_ip = katcp_ip
+            # Check that the IP address is valid.
             ipaddress.ip_address(u"{}".format(self.katcp_ip))
+            # Get the hostname of the target.
             self.hostname = ''.join(socket.gethostbyaddr(katcp_ip)[1])
-        except Exception:
-            self.logger.exception("Invalid KATCP_IP!")
+                # TODO I think this should be [0]? The function produces a tuple like this:
+                #  ('cmc3', [], ['10.103.254.6']) - ostensibly (name, aliaslist, addresslist)
+        except (ValueError, socket.herror, socket.gaierror) as e:
+            self.logger.exception("ERROR: {}".format(str(e)))
             raise
+
+        self.katcp_ip = katcp_ip
         self.katcp_port = katcp_port
         self._kcp_connect()
 
